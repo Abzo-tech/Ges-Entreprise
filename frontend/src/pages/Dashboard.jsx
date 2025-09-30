@@ -265,74 +265,55 @@ const Dashboard = () => {
     return <div>Chargement...</div>;
   }
 
-  if (user.role === 'SUPER_ADMIN') {
-    return (
-      <div className="w-full h-full bg-gradient-to-br from-slate-50 to-indigo-50 p-4">
-        <div className="mb-8 px-4">
-          <div className="flex items-center">
-            <ChartBarIcon className="h-8 w-8 text-indigo-600 mr-3" />
-            <h1 className="text-3xl font-bold text-gray-900">Tableau de bord Super Admin</h1>
-          </div>
-          <p className="text-gray-600 mt-1">Vue d'ensemble globale du système de gestion salariale</p>
-        </div>
-        <DashboardContent
-          kpis={kpis}
-          salaryData={salaryData}
-          upcomingPayments={upcomingPayments}
-          loading={loading}
-          formatCurrency={formatCurrency}
-          error={error}
-          isSuperAdmin={true}
-        />
-      </div>
-    );
-  }
+  // Modern dashboard UI with role-based content
+  const renderDashboardTitle = () => {
+    switch (user.role) {
+      case 'SUPER_ADMIN':
+        return 'Tableau de bord Super Admin';
+      case 'ADMIN':
+      case 'UTILISATEUR':
+        return 'Tableau de bord Admin';
+      case 'CAISSIER':
+        return 'Tableau de bord Caissier';
+      default:
+        return 'Tableau de bord';
+    }
+  };
 
-  if (user.role === 'ADMIN' || user.role === 'UTILISATEUR') {
-    return (
-      <div className="w-full h-full bg-gradient-to-br from-slate-50 to-indigo-50 p-4">
-        <div className="mb-8 px-4">
-          <div className="flex items-center">
-            <ChartBarIcon className="h-8 w-8 text-indigo-600 mr-3" />
-            <h1 className="text-3xl font-bold text-gray-900">Tableau de bord Admin</h1>
-          </div>
-          <p className="text-gray-600 mt-1">Vue d'ensemble de votre gestion salariale</p>
-        </div>
-        <DashboardContent
-          kpis={kpis}
-          salaryData={salaryData}
-          upcomingPayments={upcomingPayments}
-          loading={loading}
-          formatCurrency={formatCurrency}
-          error={error}
-        />
-      </div>
-    );
-  }
+  const renderDashboardSubtitle = () => {
+    switch (user.role) {
+      case 'SUPER_ADMIN':
+        return "Vue d'ensemble globale du système de gestion salariale";
+      case 'ADMIN':
+      case 'UTILISATEUR':
+        return "Vue d'ensemble de votre gestion salariale";
+      case 'CAISSIER':
+        return "Vue d'ensemble de votre gestion salariale";
+      default:
+        return "";
+    }
+  };
 
-  if (user.role === 'CAISSIER') {
-    return (
-      <div className="w-full h-full bg-gradient-to-br from-slate-50 to-indigo-50 p-4">
-        <div className="mb-8 px-4">
-          <div className="flex items-center">
-            <ChartBarIcon className="h-8 w-8 text-indigo-600 mr-3" />
-            <h1 className="text-3xl font-bold text-gray-900">Tableau de bord Caissier</h1>
-          </div>
-          <p className="text-gray-600 mt-1">Vue d'ensemble de votre gestion salariale</p>
+  return (
+    <div className="w-full h-full bg-gradient-to-br from-slate-50 to-indigo-50 p-4">
+      <div className="mb-8 px-4">
+        <div className="flex items-center">
+          <ChartBarIcon className="h-8 w-8 text-indigo-600 mr-3" />
+          <h1 className="text-3xl font-bold text-gray-900">{renderDashboardTitle()}</h1>
         </div>
-        <DashboardContent
-          kpis={kpis}
-          salaryData={salaryData}
-          upcomingPayments={upcomingPayments}
-          loading={loading}
-          formatCurrency={formatCurrency}
-          error={error}
-        />
+        <p className="text-gray-600 mt-1">{renderDashboardSubtitle()}</p>
       </div>
-    );
-  }
-
-  return <div>Rôle non reconnu</div>;
+      <DashboardContent
+        kpis={kpis}
+        salaryData={salaryData}
+        upcomingPayments={upcomingPayments}
+        loading={loading}
+        formatCurrency={formatCurrency}
+        error={error}
+        isSuperAdmin={user.role === 'SUPER_ADMIN'}
+      />
+    </div>
+  );
 };
 
 export default Dashboard;
