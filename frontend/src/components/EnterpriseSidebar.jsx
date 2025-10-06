@@ -98,13 +98,17 @@ const EnterpriseSidebar = ({ isOpen, toggleSidebar }) => {
           <div className="flex items-center space-x-3">
             {selectedEnterpriseData?.logo && (
               <img
-                src={`${import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:3000'}${selectedEnterpriseData.logo}`}
+                src={`${
+                  import.meta.env.VITE_API_URL
+                    ? import.meta.env.VITE_API_URL.replace("/api", "")
+                    : "http://localhost:3000"
+                }${selectedEnterpriseData.logo}`}
                 alt="Logo entreprise"
                 className="h-8 w-8 rounded-full object-cover"
               />
             )}
             <h2 className="text-lg font-semibold text-white truncate">
-              {selectedEnterpriseData?.nom || 'Entreprise'}
+              {selectedEnterpriseData?.nom || "Entreprise"}
             </h2>
           </div>
           <button
@@ -128,38 +132,40 @@ const EnterpriseSidebar = ({ isOpen, toggleSidebar }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-5 h-full">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                onClick={() => window.innerWidth < 1024 && toggleSidebar()}
-                className={({ isActive }) =>
-                  `flex items-center space-x-3 px-4 py-3 rounded-lg text-xl font-medium transition-all duration-200 ${
-                    isActive
-                      ? "border-l-4 bg-white bg-opacity-20"
-                      : "text-white text-opacity-90 hover:text-white hover:bg-white hover:bg-opacity-10"
-                  }`
-                }
-                style={({ isActive }) => ({
-                  borderLeftColor: isActive ? "white" : undefined,
-                })}
-              >
-                <Icon className="h-7 w-7 text-white" />
-                <span>{item.label}</span>
-              </NavLink>
-            );
-          })}
+        <nav className="flex flex-col h-full px-4 py-6">
+          <div className="space-y-5">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => window.innerWidth < 1024 && toggleSidebar()}
+                  className={({ isActive }) =>
+                    `flex items-center space-x-3 px-4 py-3 rounded-lg text-xl font-medium transition-all duration-200 ${
+                      isActive
+                        ? "border-l-4 bg-white bg-opacity-20"
+                        : "text-white text-opacity-90 hover:text-white hover:bg-white hover:bg-opacity-10"
+                    }`
+                  }
+                  style={({ isActive }) => ({
+                    borderLeftColor: isActive ? "white" : undefined,
+                  })}
+                >
+                  <Icon className="h-7 w-7 text-white" />
+                  <span>{item.label}</span>
+                </NavLink>
+              );
+            })}
+          </div>
 
           {/* Back to Super Admin */}
-          <div className="pt-4">
+          <div className="mt-64">
             <button
               onClick={handleBackToSuperAdmin}
-              className="flex items-center space-x-2 w-full px-3 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-20"
+              className="flex items-center space-x-2 w-full px-3 py-2  text-sm font-medium text-white rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-20"
             >
-              <ArrowLeftOnRectangleIcon className="h-5 w-5" />
+              <ArrowLeftOnRectangleIcon className="h-7 w-7" />
               <span>Retour Super Admin</span>
             </button>
           </div>
