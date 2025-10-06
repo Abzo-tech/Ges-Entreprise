@@ -1,8 +1,21 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
+import Pagination from '../components/Pagination';
+import { z } from 'zod';
+
+// Schema de validation pour l'utilisateur
+const utilisateurFormSchema = z.object({
+  prenom: z.string().min(1, 'Le prénom est requis').max(50, 'Le prénom ne peut pas dépasser 50 caractères'),
+  nom: z.string().min(1, 'Le nom est requis').max(50, 'Le nom ne peut pas dépasser 50 caractères'),
+  email: z.string().email('Email invalide'),
+  role: z.enum(['Super Admin', 'Admin', 'Utilisateur'], { errorMap: () => ({ message: 'Rôle invalide' }) }),
+  entreprises: z.array(z.number()).optional(),
+});
 
 const Utilisateurs = () => {
   const [utilisateurs, setUtilisateurs] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState({
     role: '',
     actif: '',
@@ -11,6 +24,7 @@ const Utilisateurs = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [formErrors, setFormErrors] = useState({});
   const [formData, setFormData] = useState({
     prenom: '',
     nom: '',
@@ -19,11 +33,12 @@ const Utilisateurs = () => {
     entreprises: [],
   });
   const [entreprises, setEntreprises] = useState([]);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchUtilisateurs();
     fetchEntreprises();
-  }, [filters]);
+  }, [filters, currentPage]);
 
   const fetchUtilisateurs = async () => {
     try {
@@ -32,8 +47,11 @@ const Utilisateurs = () => {
       const params = new URLSearchParams();
       if (filters.role) params.append('role', filters.role);
       if (filters.actif !== '') params.append('actif', filters.actif === 'actif' ? 'true' : 'false');
+      params.append('page', currentPage.toString());
+      params.append('limit', itemsPerPage.toString());
       const response = await api.get(`/utilisateurs?${params.toString()}`);
-      setUtilisateurs(response.data || response || []);
+      setUtilisateurs(response.data.data || []);
+      setTotal(response.data.total || 0);
     } catch (err) {
       setError('Erreur lors du chargement des utilisateurs');
       console.error(err);
@@ -45,9 +63,12 @@ const Utilisateurs = () => {
   const fetchEntreprises = async () => {
     try {
       const response = await api.get('/entreprises');
-      setEntreprises(response.data || response || []);
+      console.log('Entreprises response:', response);
+      const data = response.data;
+      setEntreprises(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Erreur lors du chargement des entreprises', err);
+      setEntreprises([]);
     }
   };
 
@@ -56,6 +77,7 @@ const Utilisateurs = () => {
       ...filters,
       [e.target.name]: e.target.value,
     });
+    setCurrentPage(1);
   };
 
   const handleFormChange = (e) => {
@@ -66,12 +88,21 @@ const Utilisateurs = () => {
     } else {
       setFormData({ ...formData, [name]: value });
     }
+    // Effacer l'erreur du champ modifié
+    if (formErrors[name]) {
+      setFormErrors({ ...formErrors, [name]: '' });
+    }
   };
 
   const handleSubmitForm = async (e) => {
     e.preventDefault();
+    setFormErrors({});
+    setError('');
+
     try {
-      setError('');
+      // Validation avec Zod
+      utilisateurFormSchema.parse(formData);
+
       if (editingUser) {
         await api.put(`/utilisateurs/${editingUser.id}`, formData);
       } else {
@@ -88,8 +119,16 @@ const Utilisateurs = () => {
       });
       fetchUtilisateurs();
     } catch (err) {
-      setError('Erreur lors de la sauvegarde de l\'utilisateur');
-      console.error(err);
+      if (err.name === 'ZodError') {
+        const fieldErrors = {};
+        err.errors.forEach((error) => {
+          fieldErrors[error.path[0]] = error.message;
+        });
+        setFormErrors(fieldErrors);
+      } else {
+        setError('Erreur lors de la sauvegarde de l\'utilisateur');
+        console.error(err);
+      }
     }
   };
 
@@ -141,7 +180,7 @@ const Utilisateurs = () => {
     });
   };
 
-  const filteredUtilisateurs = Array.isArray(utilisateurs) ? utilisateurs : (utilisateurs.data || []);
+  const totalPages = Math.ceil(total / itemsPerPage);
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -166,7 +205,7 @@ const Utilisateurs = () => {
             </div>
           )}
           {/* Filtres */}
-          <div className="bg-white shadow rounded-lg p-6 mb-6">
+          <div className="bg-white shadow rounded-lg p-4 mb-6">
             <h2 className="text-lg font-medium text-gray-900 mb-4">Filtres</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -209,7 +248,7 @@ const Utilisateurs = () => {
               <div className="px-6 py-4 text-center">Chargement...</div>
             ) : (
               <ul className="divide-y divide-gray-200">
-                {filteredUtilisateurs.map((user) => (
+                {utilisateurs.map((user) => (
                   <li key={user.id} className="px-6 py-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
@@ -275,102 +314,140 @@ const Utilisateurs = () => {
 
       {/* Modal pour ajouter/modifier */}
       {showForm && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
-                {editingUser ? 'Modifier l\'utilisateur' : 'Ajouter un utilisateur'}
-              </h3>
-              <form onSubmit={handleSubmitForm}>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Prénom
-                  </label>
-                  <input
-                    type="text"
-                    name="prenom"
-                    value={formData.prenom}
-                    onChange={handleFormChange}
-                    required
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                  />
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-gray-900">
+                  {editingUser ? 'Modifier l\'utilisateur' : 'Nouvel utilisateur'}
+                </h2>
+                <button
+                  onClick={() => setShowForm(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+                  {error}
                 </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Nom
-                  </label>
-                  <input
-                    type="text"
-                    name="nom"
-                    value={formData.nom}
-                    onChange={handleFormChange}
-                    required
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleFormChange}
-                    required
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Rôle
-                  </label>
-                  <select
-                    name="role"
-                    value={formData.role}
-                    onChange={handleFormChange}
-                    required
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    <option value="">Sélectionner un rôle</option>
-                    <option value="Super Admin">Super Admin</option>
-                    <option value="Admin">Admin</option>
-                    <option value="Utilisateur">Utilisateur</option>
-                  </select>
-                </div>
-                {formData.role === 'Admin' && (
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Entreprises (sélection multiple)
+              )}
+
+              <form onSubmit={handleSubmitForm} className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Prénom
+                      </label>
+                      <input
+                        type="text"
+                        name="prenom"
+                        value={formData.prenom}
+                        onChange={handleFormChange}
+                        placeholder="Jean"
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                          formErrors.prenom ? 'border-red-300' : 'border-gray-300'
+                        }`}
+                      />
+                      {formErrors.prenom && <p className="mt-1 text-sm text-red-600">{formErrors.prenom}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Nom
+                      </label>
+                      <input
+                        type="text"
+                        name="nom"
+                        value={formData.nom}
+                        onChange={handleFormChange}
+                        placeholder="Dupont"
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                          formErrors.nom ? 'border-red-300' : 'border-gray-300'
+                        }`}
+                      />
+                      {formErrors.nom && <p className="mt-1 text-sm text-red-600">{formErrors.nom}</p>}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleFormChange}
+                      placeholder="jean.dupont@email.com"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        formErrors.email ? 'border-red-300' : 'border-gray-300'
+                      }`}
+                    />
+                    {formErrors.email && <p className="mt-1 text-sm text-red-600">{formErrors.email}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Rôle
                     </label>
                     <select
-                      name="entreprises"
-                      multiple
-                      value={formData.entreprises}
+                      name="role"
+                      value={formData.role}
                       onChange={handleFormChange}
-                      className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                        formErrors.role ? 'border-red-300' : 'border-gray-300'
+                      }`}
                     >
-                      {entreprises.map((ent) => (
-                        <option key={ent.id} value={ent.id}>
-                          {ent.nom}
-                        </option>
-                      ))}
+                      <option value="">Sélectionner un rôle</option>
+                      <option value="Super Admin">Super Admin</option>
+                      <option value="Admin">Admin</option>
+                      <option value="Utilisateur">Utilisateur</option>
                     </select>
+                    {formErrors.role && <p className="mt-1 text-sm text-red-600">{formErrors.role}</p>}
                   </div>
-                )}
-                <div className="flex justify-end space-x-2">
+
+                  {formData.role === 'Admin' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Entreprises associées
+                      </label>
+                      <select
+                        name="entreprises"
+                        multiple
+                        value={formData.entreprises}
+                        onChange={handleFormChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      >
+                        {entreprises.map((ent) => (
+                          <option key={ent.id} value={ent.id}>
+                            {ent.nom}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-gray-500">Maintenez Ctrl pour sélectionner plusieurs entreprises</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-4 border-t">
                   <button
                     type="button"
-                    onClick={handleAddUser}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+                    onClick={() => setShowForm(false)}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors"
                   >
                     Annuler
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700"
+                    className="px-4 py-2 text-white bg-primary-600 border border-transparent rounded-lg shadow-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors"
                   >
-                    {editingUser ? 'Modifier' : 'Ajouter'}
+                    {editingUser ? 'Modifier' : 'Créer'}
                   </button>
                 </div>
               </form>

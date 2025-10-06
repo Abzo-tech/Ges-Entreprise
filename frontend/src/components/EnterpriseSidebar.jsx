@@ -1,28 +1,34 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
+  BuildingOfficeIcon,
   HomeIcon,
   UsersIcon,
-  BuildingStorefrontIcon,
   DocumentTextIcon,
   CreditCardIcon,
-  UserGroupIcon,
+  ClockIcon,
+  ArrowRightOnRectangleIcon,
+  ArrowLeftOnRectangleIcon,
   Bars3Icon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import { useState } from "react";
 
-import { useTheme } from '../components/ThemeProvider';
-
-const Sidebar = ({ isOpen, toggleSidebar }) => {
-  const { logout, user } = useAuth();
+const EnterpriseSidebar = ({ isOpen, toggleSidebar }) => {
+  const { logout, selectedEnterpriseData, selectEntreprise } = useAuth();
   const navigate = useNavigate();
-  const { theme } = useTheme();
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
+
+  const handleBackToSuperAdmin = () => {
+    selectEntreprise(null);
+    navigate("/dashboard");
+  };
+
+  const primaryColor = selectedEnterpriseData?.couleurPrincipale || "#4f46e5";
 
   const navItems = [
     {
@@ -31,15 +37,14 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       icon: HomeIcon,
     },
     {
-      to: "/entreprises",
-      label: "Entreprises",
-      icon: BuildingStorefrontIcon,
-      roles: ["SUPER_ADMIN"], // Only super admin can see entreprises
-    },
-    {
       to: "/employes",
       label: "Employés",
       icon: UsersIcon,
+    },
+    {
+      to: "/pointages",
+      label: "Pointages",
+      icon: ClockIcon,
     },
     {
       to: "/payruns",
@@ -56,19 +61,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       label: "Paiements",
       icon: CreditCardIcon,
     },
-    {
-      to: "/utilisateurs",
-      label: "Utilisateurs",
-      icon: UserGroupIcon,
-      roles: ["SUPER_ADMIN"], // Only super admin can see utilisateurs
-    },
   ];
-
-  // Filter nav items based on user role
-  const filteredNavItems = navItems.filter((item) => {
-    if (!item.roles) return true; // No role restriction
-    return item.roles.includes(user?.role);
-  });
 
   return (
     <>
@@ -83,36 +76,50 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       {/* Sidebar */}
       <div
         className={`
-        fixed inset-y-0 left-0 z-50 w-[16%] h-full shadow-xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static
+        fixed inset-y-0 left-0 z-50 w-[16%] h-full shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static
         ${isOpen ? "translate-x-0" : "-translate-x-full"}
       `}
         style={{
-          backgroundColor: theme.primary,
-          borderRight: `1px solid ${theme.primaryDark}`,
-          color: theme.textOnPrimary,
+          backgroundColor: selectedEnterpriseData?.couleurPrincipale
+            ? selectedEnterpriseData.couleurPrincipale
+            : "#4f46e5",
+          color: "white",
         }}
       >
         {/* Header */}
         <div
-          className="flex items-center justify-end h-16 px-6 border-b"
+          className="flex items-center justify-between h-16 px-6"
           style={{
-            borderColor: theme.primaryDark,
-            backgroundColor: theme.primaryDark,
+            backgroundColor: selectedEnterpriseData?.couleurPrincipale
+              ? selectedEnterpriseData.couleurPrincipale
+              : "#4f46e5",
           }}
         >
+          <div className="flex items-center space-x-3">
+            {selectedEnterpriseData?.logo && (
+              <img
+                src={`${import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:3000'}${selectedEnterpriseData.logo}`}
+                alt="Logo entreprise"
+                className="h-8 w-8 rounded-full object-cover"
+              />
+            )}
+            <h2 className="text-lg font-semibold text-white truncate">
+              {selectedEnterpriseData?.nom || 'Entreprise'}
+            </h2>
+          </div>
           <button
             onClick={toggleSidebar}
             className="lg:hidden p-2 rounded-lg transition-colors"
             style={{
-              color: theme.textOnPrimary,
+              color: "rgba(255, 255, 255, 0.8)",
               backgroundColor: "transparent",
             }}
             onMouseEnter={(e) => {
-              e.target.style.color = theme.textOnPrimaryHover;
-              e.target.style.backgroundColor = theme.textOnPrimaryBackgroundHover;
+              e.target.style.color = "white";
+              e.target.style.backgroundColor = "rgba(255, 255, 255, 0.2)";
             }}
             onMouseLeave={(e) => {
-              e.target.style.color = theme.textOnPrimary;
+              e.target.style.color = "rgba(255, 255, 255, 0.8)";
               e.target.style.backgroundColor = "transparent";
             }}
           >
@@ -122,7 +129,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
 
         {/* Navigation */}
         <nav className="flex-1 px-4 py-6 space-y-5 h-full">
-          {filteredNavItems.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             return (
               <NavLink
@@ -145,10 +152,21 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
               </NavLink>
             );
           })}
+
+          {/* Back to Super Admin */}
+          <div className="pt-4">
+            <button
+              onClick={handleBackToSuperAdmin}
+              className="flex items-center space-x-2 w-full px-3 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 hover:bg-white hover:bg-opacity-20"
+            >
+              <ArrowLeftOnRectangleIcon className="h-5 w-5" />
+              <span>Retour Super Admin</span>
+            </button>
+          </div>
         </nav>
       </div>
     </>
   );
 };
 
-export default Sidebar;
+export default EnterpriseSidebar;

@@ -1,0 +1,335 @@
+/* Variables CSS pour le thème dynamique */
+:root {
+  /* Couleurs par défaut */
+  --color-primary: #6366f1;
+  --color-primary-rgb: 99, 102, 241;
+  --color-primary-50: rgb(245, 243, 255);
+  --color-primary-100: rgb(221, 214, 254);
+  --color-primary-200: rgb(196, 181, 253);
+  --color-primary-300: rgb(167, 139, 250);
+  --color-primary-400: rgb(139, 92, 246);
+  --color-primary-500: #6366f1;
+  --color-primary-600: rgb(79, 70, 229);
+  --color-primary-700: rgb(67, 56, 202);
+  --color-primary-800: rgb(55, 48, 163);
+  --color-primary-900: rgb(49, 46, 129);
+
+  --color-secondary: rgb(241, 99, 102);
+  --color-secondary-50: rgb(255, 245, 243);
+  --color-secondary-100: rgb(254, 221, 214);
+  --color-secondary-200: rgb(253, 196, 181);
+  --color-secondary-300: rgb(250, 167, 139);
+  --color-secondary-400: rgb(246, 139, 92);
+  --color-secondary-500: rgb(241, 99, 102);
+  --color-secondary-600: rgb(229, 79, 70);
+  --color-secondary-700: rgb(202, 67, 56);
+  --color-secondary-800: rgb(163, 55, 48);
+  --color-secondary-900: rgb(129, 49, 46);
+
+  --color-accent: rgb(102, 241, 99);
+  --color-accent-50: rgb(243, 255, 245);
+  --color-accent-100: rgb(214, 254, 221);
+  --color-accent-200: rgb(181, 253, 196);
+  --color-accent-300: rgb(139, 250, 167);
+  --color-accent-400: rgb(92, 246, 139);
+  --color-accent-500: rgb(102, 241, 99);
+  --color-accent-600: rgb(70, 229, 79);
+  --color-accent-700: rgb(56, 202, 67);
+  --color-accent-800: rgb(48, 163, 55);
+  --color-accent-900: rgb(46, 129, 49);
+
+  --color-background: rgb(249, 250, 251);
+  --color-surface: rgb(255, 255, 255);
+  --color-surface-secondary: rgb(248, 249, 250);
+
+  --color-text-primary: rgb(17, 24, 39);
+  --color-text-secondary: rgb(75, 85, 99);
+  --color-text-tertiary: rgb(107, 114, 128);
+
+  --color-border: rgb(229, 231, 235);
+  --color-border-light: rgb(243, 244, 246);
+  --color-border-dark: rgb(156, 163, 175);
+
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --color-info: #3B82F6;
+
+  --color-shadow: rgba(99, 102, 241, 0.1);
+  --color-shadow-light: rgba(99, 102, 241, 0.05);
+  --color-shadow-dark: rgba(99, 102, 241, 0.2);
+
+  /* Espacement et dimensions */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 0.75rem;
+  --spacing-lg: 1rem;
+  --spacing-xl: 1.5rem;
+  --spacing-2xl: 2rem;
+  --spacing-3xl: 3rem;
+
+  /* Bordures */
+  --border-radius-sm: 0.25rem;
+  --border-radius-md: 0.375rem;
+  --border-radius-lg: 0.5rem;
+  --border-radius-xl: 0.75rem;
+  --border-radius-2xl: 1rem;
+  --border-radius-full: 9999px;
+
+  /* Ombres */
+  --shadow-sm: 0 1px 2px 0 var(--color-shadow);
+  --shadow-md: 0 4px 6px -1px var(--color-shadow), 0 2px 4px -1px var(--color-shadow-light);
+  --shadow-lg: 0 10px 15px -3px var(--color-shadow), 0 4px 6px -2px var(--color-shadow-light);
+  --shadow-xl: 0 20px 25px -5px var(--color-shadow), 0 10px 10px -5px var(--color-shadow-light);
+
+  /* Transitions */
+  --transition-fast: 150ms ease-in-out;
+  --transition-normal: 250ms ease-in-out;
+  --transition-slow: 350ms ease-in-out;
+}
+
+/* Classes utilitaires pour le thème */
+.theme-bg-primary { background-color: var(--color-primary); }
+.theme-bg-primary-50 { background-color: var(--color-primary-50); }
+.theme-bg-primary-100 { background-color: var(--color-primary-100); }
+.theme-bg-primary-500 { background-color: var(--color-primary-500); }
+.theme-bg-primary-600 { background-color: var(--color-primary-600); }
+.theme-bg-primary-700 { background-color: var(--color-primary-700); }
+
+.theme-text-primary { color: var(--color-primary); }
+.theme-text-primary-600 { color: var(--color-primary-600); }
+.theme-text-primary-700 { color: var(--color-primary-700); }
+.theme-text-secondary { color: var(--color-text-secondary); }
+.theme-text-tertiary { color: var(--color-text-tertiary); }
+
+.theme-border-primary { border-color: var(--color-primary); }
+.theme-border-primary-200 { border-color: var(--color-primary-200); }
+.theme-border-primary-300 { border-color: var(--color-primary-300); }
+
+.theme-shadow-primary { box-shadow: var(--shadow-md); }
+.theme-shadow-primary-lg { box-shadow: var(--shadow-lg); }
+
+/* Boutons thématisés */
+.btn-primary {
+  background-color: var(--color-primary-600);
+  color: white;
+  border: 1px solid var(--color-primary-600);
+  transition: all var(--transition-fast);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-primary-700);
+  border-color: var(--color-primary-700);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
+}
+
+.btn-secondary {
+  background-color: var(--color-secondary-600);
+  color: white;
+  border: 1px solid var(--color-secondary-600);
+  transition: all var(--transition-fast);
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-secondary-700);
+  border-color: var(--color-secondary-700);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
+}
+
+.btn-outline-primary {
+  background-color: transparent;
+  color: var(--color-primary-600);
+  border: 1px solid var(--color-primary-600);
+  transition: all var(--transition-fast);
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--color-primary-600);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Cartes thématisées */
+.card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-normal);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.card-primary {
+  border-left: 4px solid var(--color-primary);
+}
+
+/* Formulaires thématisés */
+.form-input {
+  border: 1px solid var(--color-border);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+  transition: all var(--transition-fast);
+  background-color: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-border-dark);
+  box-shadow: 0 0 0 3px rgba(156, 163, 175, 0.1);
+}
+
+.form-input.error {
+  border-color: var(--color-error);
+}
+
+.form-input.error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.form-label {
+  color: var(--color-text-primary);
+  font-weight: 500;
+  margin-bottom: var(--spacing-sm);
+}
+
+/* Icônes thématisées */
+.icon-primary {
+  color: var(--color-primary);
+}
+
+.icon-secondary {
+  color: var(--color-secondary);
+}
+
+.icon-success {
+  color: var(--color-success);
+}
+
+.icon-warning {
+  color: var(--color-warning);
+}
+
+.icon-error {
+  color: var(--color-error);
+}
+
+/* Icônes avec couleurs d'entreprise */
+.icon-company {
+  color: var(--color-primary);
+}
+
+.icon-company-light {
+  color: var(--color-primary-100);
+}
+
+.icon-company-dark {
+  color: var(--color-primary-800);
+}
+
+/* États de chargement */
+.loading-spinner {
+  border: 2px solid var(--color-border);
+  border-top: 2px solid var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Animations d'entrée */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--transition-normal);
+}
+
+.animate-slide-in {
+  animation: slideIn var(--transition-normal);
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+  :root {
+    --spacing-lg: 0.75rem;
+    --spacing-xl: 1rem;
+    --spacing-2xl: 1.5rem;
+  }
+}
+
+/* Dark mode support (optionnel) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: rgb(17, 24, 39);
+    --color-surface: rgb(31, 41, 55);
+    --color-surface-secondary: rgb(55, 65, 81);
+    --color-text-primary: rgb(243, 244, 246);
+    --color-text-secondary: rgb(156, 163, 175);
+    --color-text-tertiary: rgb(107, 114, 128);
+    --color-border: rgb(55, 65, 81);
+    --color-border-light: rgb(31, 41, 55);
+  }
+}
+
+/* Classes pour les couleurs solides thématisées (remplacement des gradients) */
+.gradient-primary {
+  background-color: var(--color-primary);
+}
+
+.gradient-secondary {
+  background-color: var(--color-secondary);
+}
+
+.gradient-accent {
+  background-color: var(--color-accent);
+}
+
+/* États d'interaction avancés */
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-md);
+}
+
+.card:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Focus visible pour l'accessibilité */
+.btn-primary:focus-visible,
+.btn-secondary:focus-visible,
+.btn-outline-primary:focus-visible,
+.form-input:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}

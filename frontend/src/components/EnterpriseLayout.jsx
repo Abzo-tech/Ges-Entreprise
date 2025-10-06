@@ -1,19 +1,24 @@
 import { useState } from 'react';
-import Sidebar from './Sidebar';
+import { useAuth } from '../context/AuthContext';
+import EnterpriseSidebar from './EnterpriseSidebar';
 import Navbar from './Navbar';
 import { Bars3Icon } from '@heroicons/react/24/outline';
 
-const Layout = ({ children }) => {
+const EnterpriseLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { selectedEnterpriseData } = useAuth();
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
+  // Couleurs par défaut si non définies
+  const primaryColor = selectedEnterpriseData?.couleurPrincipale || '#6366f1';
+
   return (
     <div className="h-screen w-full flex overflow-hidden" style={{ backgroundColor: 'var(--color-primary-50)' }}>
       {/* Sidebar */}
-      <Sidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
+      <EnterpriseSidebar isOpen={sidebarOpen} toggleSidebar={toggleSidebar} />
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -56,4 +61,4 @@ const Layout = ({ children }) => {
   );
 };
 
-export default Layout;
+export default EnterpriseLayout;

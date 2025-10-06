@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import api from '../services/api';
+import api, { setSelectedEntreprise as setApiSelectedEntreprise } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -15,6 +15,8 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
+  const [selectedEntreprise, setSelectedEntreprise] = useState(null);
+  const [selectedEnterpriseData, setSelectedEnterpriseData] = useState(null);
 
   useEffect(() => {
     // Check if token exists and is valid
@@ -59,7 +61,25 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
+    setSelectedEntreprise(null);
+    setSelectedEnterpriseData(null);
     delete api.defaults.headers.common['Authorization'];
+  };
+
+  const selectEntreprise = async (id) => {
+    setSelectedEntreprise(id);
+    setApiSelectedEntreprise(id);
+    if (id) {
+      try {
+        const response = await api.get(`/entreprises/${id}`);
+        setSelectedEnterpriseData(response.data);
+      } catch (error) {
+        console.error('Error fetching enterprise data:', error);
+        setSelectedEnterpriseData(null);
+      }
+    } else {
+      setSelectedEnterpriseData(null);
+    }
   };
 
   const value = {
@@ -68,6 +88,9 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     loading,
+    selectedEntreprise,
+    selectedEnterpriseData,
+    selectEntreprise,
   };
 
   return (

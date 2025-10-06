@@ -1,8 +1,14 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
+import Pagination from '../components/Pagination';
+import { useAuth } from '../context/AuthContext';
+import { BuildingOfficeIcon } from '@heroicons/react/24/outline';
 
 const Payslips = () => {
+  const { selectedEnterpriseData } = useAuth();
   const [payslips, setPayslips] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState({
     statut: '',
     employe: '',
@@ -19,12 +25,13 @@ const Payslips = () => {
   });
   const [employes, setEmployes] = useState([]);
   const [payRuns, setPayRuns] = useState([]);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchPayslips();
     fetchEmployes();
     fetchPayRuns();
-  }, [filters]);
+  }, [filters, currentPage]);
 
   const fetchPayslips = async () => {
     try {
@@ -34,11 +41,18 @@ const Payslips = () => {
       if (filters.statut) params.append('statut', filters.statut);
       if (filters.employe) params.append('employe', filters.employe);
       if (filters.payRun) params.append('payRun', filters.payRun);
+      params.append('page', currentPage.toString());
+      params.append('limit', itemsPerPage.toString());
       const response = await api.get(`/payslips?${params.toString()}`);
-      setPayslips(response);
+      console.log('Payslips response:', response);
+      const responseData = response.data;
+      setPayslips(Array.isArray(responseData.data) ? responseData.data : []);
+      setTotal(responseData.total || 0);
     } catch (err) {
       setError('Erreur lors du chargement des bulletins');
-      console.error(err);
+      console.error('Payslips error:', err);
+      setPayslips([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -47,18 +61,24 @@ const Payslips = () => {
   const fetchEmployes = async () => {
     try {
       const response = await api.get('/employes');
-      setEmployes(response);
+      console.log('Employes response:', response);
+      const data = response.data;
+      setEmployes(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Erreur lors du chargement des employés', err);
+      setEmployes([]);
     }
   };
 
   const fetchPayRuns = async () => {
     try {
       const response = await api.get('/payruns');
-      setPayRuns(response);
+      console.log('PayRuns response:', response);
+      const data = response.data;
+      setPayRuns(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Erreur lors du chargement des pay runs', err);
+      setPayRuns([]);
     }
   };
 
@@ -67,6 +87,7 @@ const Payslips = () => {
       ...filters,
       [e.target.name]: e.target.value,
     });
+    setCurrentPage(1);
   };
 
   const handleFormChange = (e) => {
@@ -127,7 +148,7 @@ const Payslips = () => {
 
   const handleEditPayslip = (payslip) => {
     if (payslip.statut !== 'Brouillon') {
-      alert('Seuls les bulletins en brouillon peuvent être modifiés');
+      setError('Seuls les bulletins en brouillon peuvent être modifiés');
       return;
     }
     setEditingPayslip(payslip);
@@ -139,11 +160,21 @@ const Payslips = () => {
     });
   };
 
-  const filteredPayslips = payslips;
+  const totalPages = Math.ceil(total / itemsPerPage);
 
   return (
-    <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-      <div className="px-4 py-6 sm:px-0">
+    <div
+      className="max-w-8xl mx-auto py-2 sm:px-6 lg:px-8"
+      style={{ overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+    >
+      <style>
+        {`
+          ::-webkit-scrollbar {
+            display: none;
+          }
+        `}
+      </style>
+      <div className="px-4 py-4 sm:px-0">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Gestion des Bulletins de Paie</h1>
         </div>
@@ -153,7 +184,7 @@ const Payslips = () => {
             </div>
           )}
           {/* Filtres */}
-          <div className="bg-white shadow rounded-lg p-6 mb-6">
+          <div className="bg-white shadow rounded-lg p-4 mb-6">
             <h2 className="text-lg font-medium text-gray-900 mb-4">Filtres</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
@@ -164,7 +195,7 @@ const Payslips = () => {
                   name="statut"
                   value={filters.statut}
                   onChange={handleFilterChange}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm "
                 >
                   <option value="">Tous</option>
                   <option value="Brouillon">Brouillon</option>
@@ -180,7 +211,7 @@ const Payslips = () => {
                   name="employe"
                   value={filters.employe}
                   onChange={handleFilterChange}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm "
                   placeholder="Filtrer par employé"
                 />
               </div>
@@ -193,7 +224,7 @@ const Payslips = () => {
                   name="payRun"
                   value={filters.payRun}
                   onChange={handleFilterChange}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm "
                   placeholder="Filtrer par pay run"
                 />
               </div>
@@ -213,8 +244,9 @@ const Payslips = () => {
             {loading ? (
               <div className="px-6 py-4 text-center">Chargement...</div>
             ) : (
-              <ul className="divide-y divide-gray-200">
-                {filteredPayslips.map((payslip) => (
+              <div className="max-h-96 overflow-y-auto scrollbar-hide">
+                <ul className="divide-y divide-gray-200">
+                {payslips.map((payslip) => (
                   <li key={payslip.id} className="px-6 py-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
@@ -264,9 +296,19 @@ const Payslips = () => {
                     </div>
                   </li>
                 ))}
-              </ul>
+                </ul>
+              </div>
             )}
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </div>
 
       {/* Modal pour modifier */}
@@ -288,7 +330,7 @@ const Payslips = () => {
                     value={formData.salaireBrut}
                     onChange={handleFormChange}
                     required
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm "
                   />
                 </div>
                 <div className="mb-4">
@@ -301,7 +343,7 @@ const Payslips = () => {
                     value={formData.deductions}
                     onChange={handleFormChange}
                     required
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm "
                   />
                 </div>
                 <div className="mb-4">
@@ -313,7 +355,7 @@ const Payslips = () => {
                     value={formData.notes}
                     onChange={handleFormChange}
                     rows={3}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm "
                   />
                 </div>
                 <div className="flex justify-end space-x-2">

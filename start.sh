@@ -12,7 +12,7 @@ sleep 5
 
 # Démarrer le frontend
 echo "Démarrage du frontend..."
-cd ../frontend && npm install && npm run dev &
+cd frontend && npm install && npm run dev &
 FRONTEND_PID=$!
 
 echo "Application démarrée !"

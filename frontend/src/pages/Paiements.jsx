@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import Pagination from '../components/Pagination';
+import { BuildingOfficeIcon } from '@heroicons/react/24/outline';
 
 const Paiements = () => {
+  const { user, selectedEnterpriseData } = useAuth();
   const [paiements, setPaiements] = useState([]);
+  const [total, setTotal] = useState(0);
   const [filters, setFilters] = useState({
     statut: '',
     employe: '',
@@ -14,17 +19,18 @@ const Paiements = () => {
   const [formData, setFormData] = useState({
     employeId: '',
     montant: '',
-    methode: '',
+    modePaiement: '',
     datePaiement: '',
-    reference: '',
     partial: false,
   });
   const [employes, setEmployes] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchPaiements();
     fetchEmployes();
-  }, [filters]);
+  }, [filters, currentPage]);
 
   const fetchPaiements = async () => {
     try {
@@ -34,10 +40,14 @@ const Paiements = () => {
       if (filters.statut) params.append('statut', filters.statut);
       if (filters.employe) params.append('employe', filters.employe);
       if (filters.date) params.append('date', filters.date);
+      params.append('page', currentPage.toString());
+      params.append('limit', itemsPerPage.toString());
       const response = await api.get(`/paiements?${params.toString()}`);
-      setPaiements(response);
+      setPaiements(response.data.data || []);
+      setTotal(response.data.total || 0);
     } catch (err) {
       setError('Erreur lors du chargement des paiements');
+      setPaiements([]);
       console.error(err);
     } finally {
       setLoading(false);
@@ -46,10 +56,11 @@ const Paiements = () => {
 
   const fetchEmployes = async () => {
     try {
-      const response = await api.get('/employes');
-      setEmployes(response);
+      const response = await api.get('/employes?limit=1000'); // Load up to 1000 employees for dropdown
+      setEmployes(response.data || []);
     } catch (err) {
       console.error('Erreur lors du chargement des employés', err);
+      setEmployes([]);
     }
   };
 
@@ -58,6 +69,7 @@ const Paiements = () => {
       ...filters,
       [e.target.name]: e.target.value,
     });
+    setCurrentPage(1);
   };
 
   const handleFormChange = (e) => {
@@ -73,20 +85,22 @@ const Paiements = () => {
     try {
       setError('');
       const data = {
-        ...formData,
         employeId: Number(formData.employeId),
         montant: Number(formData.montant),
+        modePaiement: formData.modePaiement,
+        datePaiement: new Date(formData.datePaiement).toISOString(),
+        statut: formData.partial ? 'PARTIEL' : 'PAYE',
       };
       await api.post('/paiements', data);
       setShowRecordForm(false);
       setFormData({
         employeId: '',
         montant: '',
-        methode: '',
+        modePaiement: '',
         datePaiement: '',
-        reference: '',
         partial: false,
       });
+      setCurrentPage(1);
       fetchPaiements();
     } catch (err) {
       setError('Erreur lors de l\'enregistrement du paiement');
@@ -116,136 +130,174 @@ const Paiements = () => {
     setFormData({
       employeId: '',
       montant: '',
-      methode: '',
+      modePaiement: '',
       datePaiement: '',
-      reference: '',
       partial: false,
     });
   };
 
-  const filteredPaiements = paiements;
+  const totalPages = Math.ceil(total / itemsPerPage);
+  const employesList = Array.isArray(employes.data) ? employes.data : Array.isArray(employes) ? employes : [];
 
   return (
-    <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-      <div className="px-4 py-6 sm:px-0">
+    <div
+      className="max-w-8xl  py-2 sm:px-6 lg:px-8"
+      style={{ overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+    >
+      <style>
+        {`
+          ::-webkit-scrollbar {
+            display: none;
+          }
+        `}
+      </style>
+      <div className="px-4 py-4 sm:px-0">
         <div className="mb-8 flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">Gestion des Paiements</h1>
-          <button
-            onClick={handleRecordPaiement}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md"
-          >
-            Enregistrer un paiement
-          </button>
-        </div>
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
-              {error}
-            </div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Gestion des Paiements
+          </h1>
+          {(user?.role === 'ADMIN' || user?.role === 'CAISSIER' || user?.role === 'SUPER_ADMIN') && (
+            <button
+              onClick={handleRecordPaiement}
+              className="text-white px-4 py-2 rounded-md"
+              style={{
+                backgroundColor: selectedEnterpriseData?.couleurPrincipale || '#4f46e5',
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = selectedEnterpriseData?.couleurPrincipale ? '#4338ca' : '#4338ca';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = selectedEnterpriseData?.couleurPrincipale || '#4f46e5';
+              }}
+            >
+              Enregistrer un paiement
+            </button>
           )}
-          {/* Filtres */}
-          <div className="bg-white shadow rounded-lg p-6 mb-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Filtres</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Statut
-                </label>
-                <select
-                  name="statut"
-                  value={filters.statut}
-                  onChange={handleFilterChange}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  <option value="">Tous</option>
-                  <option value="Effectué">Effectué</option>
-                  <option value="En attente">En attente</option>
-                  <option value="Échec">Échec</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Employé
-                </label>
-                <input
-                  type="text"
-                  name="employe"
-                  value={filters.employe}
-                  onChange={handleFilterChange}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="Filtrer par employé"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Date
-                </label>
-                <input
-                  type="month"
-                  name="date"
-                  value={filters.date}
-                  onChange={handleFilterChange}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                />
-              </div>
+        </div>
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+            {error}
+          </div>
+        )}
+        {/* Filtres */}
+        <div className="bg-white shadow rounded-lg p-4 mb-6">
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Filtres</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Statut
+              </label>
+              <select
+                name="statut"
+                value={filters.statut}
+                onChange={handleFilterChange}
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm "
+              >
+                <option value="">Tous</option>
+                <option value="PAYE">Payé</option>
+                <option value="PARTIEL">Partiel</option>
+                <option value="EN_ATTENTE">En attente</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Employé
+              </label>
+              <input
+                type="text"
+                name="employe"
+                value={filters.employe}
+                onChange={handleFilterChange}
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm "
+                placeholder="Filtrer par employé"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Date
+              </label>
+              <input
+                type="month"
+                name="date"
+                value={filters.date}
+                onChange={handleFilterChange}
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm "
+              />
             </div>
           </div>
+        </div>
 
-          {/* Liste des paiements */}
-          <div className="bg-white shadow overflow-hidden sm:rounded-md">
-            {loading ? (
-              <div className="px-6 py-4 text-center">Chargement...</div>
-            ) : (
-              <ul className="divide-y divide-gray-200">
-                {filteredPaiements.map((paiement) => (
-                  <li key={paiement.id} className="px-6 py-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-purple-300 flex items-center justify-center">
-                            <span className="text-sm font-medium text-purple-700">
-                              €
-                            </span>
-                          </div>
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {paiement.employe ? `${paiement.employe.prenom} ${paiement.employe.nom}` : 'Employé inconnu'}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {paiement.montant} € • {paiement.methode} • {new Date(paiement.datePaiement).toLocaleDateString()}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            Référence: {paiement.reference}
-                          </div>
+        {/* Liste des paiements */}
+        <div className="bg-white shadow overflow-hidden sm:rounded-md">
+          {loading ? (
+            <div className="px-6 py-4 text-center">Chargement...</div>
+          ) : (
+            <div className="max-h-96 overflow-y-auto scrollbar-hide">
+            <ul className="divide-y divide-gray-200 scrollbar-hide">
+              {paiements.map((paiement) => (
+                <li key={paiement.id} className="px-6 py-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <div className="h-10 w-10 rounded-full bg-purple-300 flex items-center justify-center">
+                          <span className="text-sm font-medium text-purple-700">
+                            €
+                          </span>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          paiement.statut === 'Effectué' ? 'bg-green-100 text-green-800' :
-                          paiement.statut === 'En attente' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {paiement.statut}
-                        </span>
-                        <button
-                          onClick={() => handleViewReceipt(paiement.id)}
-                          className="text-indigo-600 hover:text-indigo-900"
-                        >
-                          Voir reçu
-                        </button>
+                      <div className="ml-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {paiement.employe
+                            ? `${paiement.employe.prenom} ${paiement.employe.nom}`
+                            : "Employé inconnu"}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {paiement.montant} € • {paiement.modePaiement} •{" "}
+                          {new Date(paiement.datePaiement).toLocaleDateString()}
+                        </div>
                       </div>
                     </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+                    <div className="flex items-center space-x-2">
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          paiement.statut === "PAYE"
+                            ? "bg-green-100 text-green-800"
+                            : paiement.statut === "PARTIEL"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {paiement.statut === "PAYE" ? "Payé" : paiement.statut === "PARTIEL" ? "Partiel" : "En attente"}
+                      </span>
+                      <button
+                        onClick={() => handleViewReceipt(paiement.id)}
+                        className="text-indigo-600 hover:text-indigo-900"
+                      >
+                        Voir reçu
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            </div>
+          )}
         </div>
 
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        )}
+      </div>
+
       {/* Modal pour enregistrer */}
-      {showRecordForm && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+      {showRecordForm && (user?.role === 'ADMIN' || user?.role === 'CAISSIER' || user?.role === 'SUPER_ADMIN') && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" onClick={() => setShowRecordForm(false)}>
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" onClick={(e) => e.stopPropagation()}>
             <div className="mt-3">
               <h3 className="text-lg font-medium text-gray-900 mb-4">
                 Enregistrer un paiement
@@ -255,15 +307,15 @@ const Paiements = () => {
                   <label className="block text-sm font-medium text-gray-700">
                     Employé
                   </label>
-                  <select 
+                  <select
                     name="employeId"
                     value={formData.employeId}
                     onChange={handleFormChange}
                     required
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm "
                   >
                     <option value="">Sélectionner un employé</option>
-                    {employes.map((emp) => (
+                    {employesList.map((emp) => (
                       <option key={emp.id} value={emp.id}>
                         {emp.prenom} {emp.nom}
                       </option>
@@ -280,24 +332,26 @@ const Paiements = () => {
                     value={formData.montant}
                     onChange={handleFormChange}
                     required
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm "
                   />
                 </div>
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700">
-                    Méthode de paiement
+                    Mode de paiement
                   </label>
-                  <select 
-                    name="methode"
-                    value={formData.methode}
+                  <select
+                    name="modePaiement"
+                    value={formData.modePaiement}
                     onChange={handleFormChange}
                     required
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm "
                   >
-                    <option value="">Sélectionner une méthode</option>
-                    <option value="Virement bancaire">Virement bancaire</option>
-                    <option value="Chèque">Chèque</option>
-                    <option value="Espèces">Espèces</option>
+                    <option value="">Sélectionner un mode</option>
+                    <option value="VIREMENT">Virement bancaire</option>
+                    <option value="CHEQUE">Chèque</option>
+                    <option value="ESPECES">Espèces</option>
+                    <option value="ORANGE_MONEY">Orange Money</option>
+                    <option value="WAVE">Wave</option>
                   </select>
                 </div>
                 <div className="mb-4">
@@ -310,20 +364,7 @@ const Paiements = () => {
                     value={formData.datePaiement}
                     onChange={handleFormChange}
                     required
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                  />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Référence
-                  </label>
-                  <input
-                    type="text"
-                    name="reference"
-                    value={formData.reference}
-                    onChange={handleFormChange}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="Référence optionnelle"
+                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm "
                   />
                 </div>
                 <div className="mb-4">
@@ -335,13 +376,15 @@ const Paiements = () => {
                       onChange={handleFormChange}
                       className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                     />
-                    <span className="ml-2 text-sm text-gray-700">Paiement partiel</span>
+                    <span className="ml-2 text-sm text-gray-700">
+                      Paiement partiel
+                    </span>
                   </label>
                 </div>
                 <div className="flex justify-end space-x-2">
                   <button
                     type="button"
-                    onClick={handleRecordPaiement}
+                    onClick={() => setShowRecordForm(false)}
                     className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
                   >
                     Annuler
