@@ -19,7 +19,17 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 const Pointages = () => {
-  const { user, selectedEntreprise } = useAuth();
+  const { user, selectedEntreprise, selectedEnterpriseData } = useAuth();
+  const primaryColor = selectedEnterpriseData?.couleurPrincipale || "#4f46e5";
+
+  const darkenColor = (color, percent) => {
+    const num = parseInt(color.replace("#", ""), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = (num >> 16) - amt;
+    const G = (num >> 8 & 0x00FF) - amt;
+    const B = (num & 0x0000FF) - amt;
+    return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 + (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 + (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
+  };
   const [pointages, setPointages] = useState([]);
   const [employes, setEmployes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -178,7 +188,10 @@ const Pointages = () => {
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="btn-primary"
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white"
+          style={{ backgroundColor: primaryColor }}
+          onMouseEnter={(e) => e.target.style.backgroundColor = darkenColor(primaryColor, 20)}
+          onMouseLeave={(e) => e.target.style.backgroundColor = primaryColor}
         >
           <ClockIcon className="h-5 w-5 mr-2" />
           Nouveau Pointage
@@ -501,7 +514,10 @@ const Pointages = () => {
                   </button>
                   <button
                     type="submit"
-                    className="btn-primary"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white"
+                    style={{ backgroundColor: primaryColor }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = darkenColor(primaryColor, 20)}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = primaryColor}
                   >
                     {editingPointage ? 'Modifier' : 'Créer'}
                   </button>

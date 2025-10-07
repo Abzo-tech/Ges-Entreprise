@@ -9,6 +9,7 @@ import {
   UserGroupIcon,
   Bars3Icon,
   XMarkIcon,
+  BuildingOfficeIcon,
 } from "@heroicons/react/24/outline";
 import { useState } from "react";
 
@@ -94,12 +95,18 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       >
         {/* Header */}
         <div
-          className="flex items-center justify-end h-16 px-6 border-b"
+          className="flex items-center justify-between h-16 px-6 border-b"
           style={{
             borderColor: theme.primaryDark,
             backgroundColor: theme.primaryDark,
           }}
         >
+          {user?.role === 'SUPER_ADMIN' && (
+            <div className="flex items-center space-x-3">
+              <BuildingOfficeIcon className="h-16 w-16 text-white" />
+              <h1 className="text-lg font-bold text-white">Gestion des Entreprises</h1>
+            </div>
+          )}
           <button
             onClick={toggleSidebar}
             className="lg:hidden p-2 rounded-lg transition-colors"

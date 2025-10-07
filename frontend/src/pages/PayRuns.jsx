@@ -6,6 +6,16 @@ import { BuildingOfficeIcon } from '@heroicons/react/24/outline';
 
 const PayRuns = () => {
   const { selectedEnterpriseData } = useAuth();
+  const primaryColor = selectedEnterpriseData?.couleurPrincipale || "#4f46e5";
+
+  const darkenColor = (color, percent) => {
+    const num = parseInt(color.replace("#", ""), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = (num >> 16) - amt;
+    const G = (num >> 8 & 0x00FF) - amt;
+    const B = (num & 0x0000FF) - amt;
+    return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 + (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 + (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
+  };
   const [payRuns, setPayRuns] = useState([]);
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
@@ -180,13 +190,13 @@ const PayRuns = () => {
               onClick={handleCreatePayRun}
               className="text-white px-4 py-2 rounded-md"
               style={{
-                backgroundColor: selectedEnterpriseData?.couleurPrincipale || '#4f46e5',
+                backgroundColor: primaryColor,
               }}
               onMouseEnter={(e) => {
-                e.target.style.backgroundColor = selectedEnterpriseData?.couleurPrincipale ? '#4338ca' : '#4338ca';
+                e.target.style.backgroundColor = darkenColor(primaryColor, 20);
               }}
               onMouseLeave={(e) => {
-                e.target.style.backgroundColor = selectedEnterpriseData?.couleurPrincipale || '#4f46e5';
+                e.target.style.backgroundColor = primaryColor;
               }}
             >
               Créer une pay run
@@ -287,8 +297,8 @@ const PayRuns = () => {
 
       {/* Modal pour créer */}
       {showCreateForm && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full" onClick={() => setShowCreateForm(false)}>
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white" onClick={(e) => e.stopPropagation()}>
             <div className="mt-3">
               <h3 className="text-lg font-medium text-gray-900 mb-4">
                 Créer une pay run
@@ -383,14 +393,17 @@ const PayRuns = () => {
                 <div className="flex justify-end space-x-2">
                   <button
                     type="button"
-                    onClick={handleCreatePayRun}
+                    onClick={() => setShowCreateForm(false)}
                     className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
                   >
                     Annuler
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700"
+                    className="px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md"
+                    style={{ backgroundColor: primaryColor }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = darkenColor(primaryColor, 20)}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = primaryColor}
                   >
                     Créer
                   </button>

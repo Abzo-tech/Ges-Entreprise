@@ -104,7 +104,7 @@ const EnterpriseSidebar = ({ isOpen, toggleSidebar }) => {
                     : "http://localhost:3000"
                 }${selectedEnterpriseData.logo}`}
                 alt="Logo entreprise"
-                className="h-8 w-8 rounded-full object-cover"
+                className="h-10 w-10 rounded-full object-cover"
               />
             )}
             <h2 className="text-lg font-semibold text-white truncate">

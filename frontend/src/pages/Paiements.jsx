@@ -6,6 +6,16 @@ import { BuildingOfficeIcon } from '@heroicons/react/24/outline';
 
 const Paiements = () => {
   const { user, selectedEnterpriseData } = useAuth();
+  const primaryColor = selectedEnterpriseData?.couleurPrincipale || "#4f46e5";
+
+  const darkenColor = (color, percent) => {
+    const num = parseInt(color.replace("#", ""), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = (num >> 16) - amt;
+    const G = (num >> 8 & 0x00FF) - amt;
+    const B = (num & 0x0000FF) - amt;
+    return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 + (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 + (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
+  };
   const [paiements, setPaiements] = useState([]);
   const [total, setTotal] = useState(0);
   const [filters, setFilters] = useState({
@@ -161,13 +171,13 @@ const Paiements = () => {
               onClick={handleRecordPaiement}
               className="text-white px-4 py-2 rounded-md"
               style={{
-                backgroundColor: selectedEnterpriseData?.couleurPrincipale || '#4f46e5',
+                backgroundColor: primaryColor,
               }}
               onMouseEnter={(e) => {
-                e.target.style.backgroundColor = selectedEnterpriseData?.couleurPrincipale ? '#4338ca' : '#4338ca';
+                e.target.style.backgroundColor = darkenColor(primaryColor, 20);
               }}
               onMouseLeave={(e) => {
-                e.target.style.backgroundColor = selectedEnterpriseData?.couleurPrincipale || '#4f46e5';
+                e.target.style.backgroundColor = primaryColor;
               }}
             >
               Enregistrer un paiement
@@ -391,7 +401,10 @@ const Paiements = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700"
+                    className="px-4 py-2 text-sm font-medium text-white border border-transparent rounded-md"
+                    style={{ backgroundColor: primaryColor }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = darkenColor(primaryColor, 20)}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = primaryColor}
                   >
                     Enregistrer
                   </button>

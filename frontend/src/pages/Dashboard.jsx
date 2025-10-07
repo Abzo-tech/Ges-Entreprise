@@ -35,7 +35,7 @@ const DashboardContent = ({
   <>
     {error && (
       <div
-        className="border-l-4 p-4 mb-6 rounded-r-lg mx-4"
+        className="border-l-4 p-4 mb-4 rounded-r-lg mx-4"
         style={{
           backgroundColor: "var(--color-error-50)",
           borderColor: "var(--color-error-400)",
@@ -43,7 +43,7 @@ const DashboardContent = ({
         }}
       >
         <div className="flex">
-          <ExclamationTriangleIcon className="h-5 w-5 mr-" />
+          <ExclamationTriangleIcon className="h-5 w-5 " />
           <span>{error}</span>
         </div>
       </div>
@@ -51,12 +51,12 @@ const DashboardContent = ({
 
     {/* KPIs */}
     <div
-      className={`grid grid-cols-1 md:grid-cols-2 mt-4 ${
+      className={`grid grid-cols-1 md:grid-cols-2 ${
         isSuperAdmin && !isEnterpriseView ? "lg:grid-cols-6" : "lg:grid-cols-4"
-      } gap-6 mb-8 px-6 animate-fade-in`}
+      } gap-6 mb-16 px-6 animate-fade-in`}
     >
       <div className="card card-primary">
-        <div className="p-6">
+        <div className="p-4">
           <div className="flex items-center">
             <div
               className="p-3 rounded-lg"
@@ -69,7 +69,7 @@ const DashboardContent = ({
             </div>
             <div className="ml-4">
               <p className="form-label text-xs text-white">Masse salariale</p>
-              <p className="text-2xl font-bold mt-1 text-white">
+              <p className="text-2xl font-bold  text-white">
                 {loading ? "..." : formatCurrency(kpis?.salaryMass)}
               </p>
             </div>
@@ -78,7 +78,7 @@ const DashboardContent = ({
       </div>
 
       <div className="card">
-        <div className="p-6">
+        <div className="p-4">
           <div className="flex items-center">
             <div
               className="p-3 rounded-lg"
@@ -100,7 +100,7 @@ const DashboardContent = ({
       </div>
 
       <div className="card">
-        <div className="p-6">
+        <div className="p-4">
           <div className="flex items-center">
             <div
               className="p-3 rounded-lg"
@@ -122,7 +122,7 @@ const DashboardContent = ({
       </div>
 
       <div className="card">
-        <div className="p-6">
+        <div className="p-4">
           <div className="flex items-center">
             <div
               className="p-3 rounded-lg"
@@ -146,7 +146,7 @@ const DashboardContent = ({
       {isSuperAdmin && !isEnterpriseView && (
         <>
           <div className="card">
-            <div className="p-6">
+            <div className="p-4">
               <div className="flex items-center">
                 <div
                   className="p-3 rounded-lg"
@@ -168,7 +168,7 @@ const DashboardContent = ({
           </div>
 
           <div className="card">
-            <div className="p-6">
+            <div className="p-4">
               <div className="flex items-center">
                 <div
                   className="p-3 rounded-lg"

@@ -277,19 +277,19 @@ const Entreprises = () => {
                   {filteredEntreprises.map((ent) => (
                     <div
                       key={ent.id}
-                      className="bg-gray-50 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow"
+                      className="bg-gray-50 rounded-lg p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                     >
-                      <div className="flex items-center mb-2">
-                        <div className="flex-shrink-0 h-10 w-10">
+                      <div className="flex items-center mb-4">
+                        <div className="flex-shrink-0 h-16 w-16">
                           {ent.logo ? (
                             <img
                               src={`${import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:3000'}${ent.logo}`}
                               alt={`${ent.nom} logo`}
-                              className="h-10 w-10 rounded-full object-cover"
+                              className="h-16 w-16 rounded-full object-cover border-2 border-white shadow-md"
                             />
                           ) : (
                             <div
-                              className="h-10 w-10 rounded-full flex items-center justify-center text-white font-medium text-sm"
+                              className="h-16 w-16 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-md"
                               style={{
                                 backgroundColor:
                                   ent.couleurPrincipale || "#6366f1",
@@ -299,11 +299,11 @@ const Entreprises = () => {
                             </div>
                           )}
                         </div>
-                        <div className="ml-3">
-                          <h3 className="text-base font-medium text-gray-900">
+                        <div className="ml-4">
+                          <h3 className="text-lg font-semibold text-gray-900">
                             {ent.nom}
                           </h3>
-                          <p className="text-xs text-gray-500">{ent.secteur}</p>
+                          <p className="text-sm text-gray-600">{ent.secteur}</p>
                         </div>
                       </div>
                       <div className="space-y-1">
