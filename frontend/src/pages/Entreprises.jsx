@@ -1,23 +1,38 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
-import { useAuth } from '../context/AuthContext';
-import { Edit, Trash2, Eye, Search } from 'lucide-react';
-import { z } from 'zod';
-import Pagination from '../components/Pagination';
-import LogoUploader from '../components/LogoUploader';
-import FormField from '../components/FormField';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../services/api";
+import { useAuth } from "../context/AuthContext";
+import { Edit, Trash2, Eye, Search } from "lucide-react";
+import { z } from "zod";
+import Pagination from "../components/Pagination";
+import LogoUploader from "../components/LogoUploader";
+import FormField from "../components/FormField";
 
 // Schema de validation pour l'entreprise
 const entrepriseFormSchema = z.object({
-  nom: z.string().min(1, 'Le nom est requis').max(100, 'Le nom ne peut pas dépasser 100 caractères'),
-  adresse: z.string().min(1, 'L\'adresse est requise').max(255, 'L\'adresse ne peut pas dépasser 255 caractères'),
-  secteur: z.string().min(1, 'Le secteur est requis').max(50, 'Le secteur ne peut pas dépasser 50 caractères'),
+  nom: z
+    .string()
+    .min(1, "Le nom est requis")
+    .max(100, "Le nom ne peut pas dépasser 100 caractères"),
+  adresse: z
+    .string()
+    .min(1, "L'adresse est requise")
+    .max(255, "L'adresse ne peut pas dépasser 255 caractères"),
+  secteur: z
+    .string()
+    .min(1, "Le secteur est requis")
+    .max(50, "Le secteur ne peut pas dépasser 50 caractères"),
   logo: z.any().optional(),
-  couleurPrincipale: z.string().regex(/^#[0-9A-F]{6}$/i, 'Couleur invalide').optional(),
-  devise: z.enum(['XOF', 'EUR', 'USD']).optional(),
-  typePeriode: z.enum(['MENSUELLE', 'HEBDOMADAIRE', 'JOURNALIERE']).optional(),
-  numeroServiceClient: z.string().max(20, 'Le numéro ne peut pas dépasser 20 caractères').optional(),
+  couleurPrincipale: z
+    .string()
+    .regex(/^#[0-9A-F]{6}$/i, "Couleur invalide")
+    .optional(),
+  devise: z.enum(["XOF", "EUR", "USD"]).optional(),
+  typePeriode: z.enum(["MENSUELLE", "HEBDOMADAIRE", "JOURNALIERE"]).optional(),
+  numeroServiceClient: z
+    .string()
+    .max(20, "Le numéro ne peut pas dépasser 20 caractères")
+    .optional(),
 });
 
 const Entreprises = () => {
@@ -27,8 +42,8 @@ const Entreprises = () => {
   const [total, setTotal] = useState(0);
 
   const [filters, setFilters] = useState({
-    secteur: '',
-    nom: '',
+    secteur: "",
+    nom: "",
   });
   const itemsPerPage = 500;
   const [showForm, setShowForm] = useState(false);
@@ -36,14 +51,14 @@ const Entreprises = () => {
   const [loading, setLoading] = useState(true);
   const [formErrors, setFormErrors] = useState({});
   const [formData, setFormData] = useState({
-    nom: '',
-    adresse: '',
-    secteur: '',
+    nom: "",
+    adresse: "",
+    secteur: "",
     logo: null,
-    couleurPrincipale: '#6366f1',
-    devise: 'XOF',
-    typePeriode: 'MENSUELLE',
-    numeroServiceClient: '',
+    couleurPrincipale: "#6366f1",
+    devise: "XOF",
+    typePeriode: "MENSUELLE",
+    numeroServiceClient: "",
   });
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -55,22 +70,21 @@ const Entreprises = () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (filters.secteur) params.append('secteur', filters.secteur);
-      if (filters.nom) params.append('nom', filters.nom);
-      params.append('page', currentPage.toString());
-      params.append('limit', itemsPerPage.toString());
+      if (filters.secteur) params.append("secteur", filters.secteur);
+      if (filters.nom) params.append("nom", filters.nom);
+      params.append("page", currentPage.toString());
+      params.append("limit", itemsPerPage.toString());
 
       const response = await api.get(`/entreprises?${params.toString()}`);
-      console.log('Entreprises response:', response.data);
+      console.log("Entreprises response:", response.data);
       setEntreprises(response.data.data);
       setTotal(response.data.total);
     } catch (err) {
-      console.error('Error fetching entreprises:', err);
+      console.error("Error fetching entreprises:", err);
     } finally {
       setLoading(false);
     }
   };
-
 
   const handleFilterChange = (e) => {
     setFilters({
@@ -80,14 +94,35 @@ const Entreprises = () => {
     setCurrentPage(1);
   };
 
-
-
   const handleFormChange = (e) => {
     const { name, value, type, files } = e.target;
-    if (type === 'file') {
+    if (type === "file") {
+      const file = files && files.length > 0 ? files[0] : null;
+
+      // Validation du type de fichier pour le logo
+      if (file && name === "logo") {
+        const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
+        if (!allowedTypes.includes(file.type)) {
+          setFormErrors({
+            ...formErrors,
+            [name]:
+              "Format non autorisé. Seuls les formats JPEG et PNG sont acceptés",
+          });
+          return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+          setFormErrors({
+            ...formErrors,
+            [name]: "Le fichier ne doit pas dépasser 5MB",
+          });
+          return;
+        }
+      }
+
       setFormData({
         ...formData,
-        [name]: files[0],
+        [name]: file,
       });
     } else {
       setFormData({
@@ -95,9 +130,8 @@ const Entreprises = () => {
         [name]: value,
       });
     }
-    // Effacer l'erreur du champ modifié
     if (formErrors[name]) {
-      setFormErrors({ ...formErrors, [name]: '' });
+      setFormErrors({ ...formErrors, [name]: "" });
     }
   };
 
@@ -105,44 +139,114 @@ const Entreprises = () => {
     e.preventDefault();
     setFormErrors({});
 
+    console.log("📝 [FORM SUBMIT] Starting form submission");
+    console.log(
+      "📝 [FORM SUBMIT] FormData logo:",
+      formData.logo instanceof File
+        ? `File: ${formData.logo.name}`
+        : formData.logo
+    );
+
     try {
-      // Validation avec Zod
+      // Validation avec Zod (on ne valide pas le fichier logo)
       const validationData = { ...formData };
-      delete validationData.logo; // Ne pas valider le fichier
+      delete validationData.logo;
       entrepriseFormSchema.parse(validationData);
 
       const submitData = new FormData();
-      Object.keys(formData).forEach(key => {
-        if (formData[key] !== null && formData[key] !== '') {
+      Object.keys(formData).forEach((key) => {
+        if (key === "logo" && formData.logo instanceof File) {
+          // On ne l'envoie pas ici, on l'enverra après création via l'API dédiée
+        } else if (
+          key !== "logo" &&
+          formData[key] !== null &&
+          formData[key] !== ""
+        ) {
           submitData.append(key, formData[key]);
         }
       });
 
+      let entrepriseId = null;
       if (editingEntreprise) {
-        await api.put(`/entreprises/${editingEntreprise.id}`, submitData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
+        const res = await api.put(
+          `/entreprises/${editingEntreprise.id}`,
+          submitData,
+          {
+            headers: { "Content-Type": "multipart/form-data" },
+          }
+        );
+        entrepriseId = editingEntreprise.id;
+        console.log("✏️ [FORM SUBMIT] Entreprise updated, ID:", entrepriseId);
       } else {
-        await api.post('/entreprises', submitData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
+        const res = await api.post("/entreprises", submitData, {
+          headers: { "Content-Type": "multipart/form-data" },
         });
+        entrepriseId = res.data.id;
+        console.log("✨ [FORM SUBMIT] Entreprise created, ID:", entrepriseId);
       }
+
+      // Si un logo a été sélectionné, on l'uploade maintenant que l'entreprise existe
+      if (formData.logo instanceof File && entrepriseId) {
+        console.log(
+          "🔵 [LOGO UPLOAD] Starting upload for entreprise:",
+          entrepriseId
+        );
+        console.log("🔵 [LOGO UPLOAD] File details:", {
+          name: formData.logo.name,
+          size: formData.logo.size,
+          type: formData.logo.type,
+        });
+
+        const logoFormData = new FormData();
+        logoFormData.append("logo", formData.logo);
+
+        try {
+          const uploadResponse = await api.post(
+            `/files/upload/logo/${entrepriseId}`,
+            logoFormData,
+            {
+              headers: { "Content-Type": "multipart/form-data" },
+            }
+          );
+          console.log(
+            "✅ [LOGO UPLOAD] Upload successful! Response:",
+            uploadResponse.data
+          );
+        } catch (logoError) {
+          console.error("❌ [LOGO UPLOAD] Upload failed:", logoError);
+          console.error(
+            "❌ [LOGO UPLOAD] Error details:",
+            logoError.response?.data
+          );
+          // On continue même si l'upload du logo échoue
+        }
+      } else {
+        console.log(
+          "⚠️ [LOGO UPLOAD] Skipped - No logo file or no entreprise ID",
+          {
+            hasLogo: formData.logo instanceof File,
+            entrepriseId: entrepriseId,
+          }
+        );
+      }
+
+      // Fermer le formulaire et rafraîchir la liste
       setShowForm(false);
       setEditingEntreprise(null);
       setFormData({
-        nom: '',
-        adresse: '',
-        secteur: '',
+        nom: "",
+        adresse: "",
+        secteur: "",
         logo: null,
-        couleurPrincipale: '#6366f1',
-        devise: 'XOF',
-        typePeriode: 'MENSUELLE',
-        numeroServiceClient: '',
+        couleurPrincipale: "#6366f1",
+        devise: "XOF",
+        typePeriode: "MENSUELLE",
+        numeroServiceClient: "",
       });
       setCurrentPage(1);
-      fetchEntreprises();
+      await fetchEntreprises();
     } catch (err) {
-      if (err.name === 'ZodError') {
+      if (err.name === "ZodError") {
         const fieldErrors = {};
         err.errors.forEach((error) => {
           fieldErrors[error.path[0]] = error.message;
@@ -167,14 +271,14 @@ const Entreprises = () => {
     setEditingEntreprise(null);
     setShowForm(true);
     setFormData({
-      nom: '',
-      adresse: '',
-      secteur: '',
+      nom: "",
+      adresse: "",
+      secteur: "",
       logo: null,
-      couleurPrincipale: '#6366f1',
-      devise: 'XOF',
-      typePeriode: 'MENSUELLE',
-      numeroServiceClient: '',
+      couleurPrincipale: "#6366f1",
+      devise: "XOF",
+      typePeriode: "MENSUELLE",
+      numeroServiceClient: "",
     });
   };
 
@@ -186,10 +290,10 @@ const Entreprises = () => {
       adresse: ent.adresse,
       secteur: ent.secteur,
       logo: null, // Pour l'edit, on ne pré-remplit pas le file input
-      couleurPrincipale: ent.couleurPrincipale || '#6366f1',
-      devise: ent.devise || 'XOF',
-      typePeriode: ent.typePeriode || 'MENSUELLE',
-      numeroServiceClient: ent.numeroServiceClient || '',
+      couleurPrincipale: ent.couleurPrincipale || "#6366f1",
+      devise: ent.devise || "XOF",
+      typePeriode: ent.typePeriode || "MENSUELLE",
+      numeroServiceClient: ent.numeroServiceClient || "",
     });
   };
 
@@ -227,7 +331,6 @@ const Entreprises = () => {
       </header>
       <main className="max-w-7xl mx-auto py-4 sm:px-6 lg:px-8">
         <div className="px-4 py-4 sm:px-0">
-
           {/* Filtres */}
           <div className="bg-white shadow rounded-lg p-2 mb-2 max-w-30 sticky top-12 z-10">
             {/* <h2 className="text-sm font-medium text-gray-900 mb-2">Filtres</h2> */}
@@ -274,86 +377,41 @@ const Entreprises = () => {
             ) : (
               <div className="p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-y-auto max-h-[60vh]">
-                  {filteredEntreprises.map((ent) => (
-                    <div
-                      key={ent.id}
-                      className="bg-gray-50 rounded-lg p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
-                    >
-                      <div className="flex items-center mb-4">
-                        <div className="flex-shrink-0 h-16 w-16">
-                          {ent.logo ? (
-                            <img
-                              src={`${import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : 'http://localhost:3000'}${ent.logo}`}
-                              alt={`${ent.nom} logo`}
-                              className="h-16 w-16 rounded-full object-cover border-2 border-white shadow-md"
-                            />
-                          ) : (
-                            <div
-                              className="h-16 w-16 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-md"
-                              style={{
-                                backgroundColor:
-                                  ent.couleurPrincipale || "#6366f1",
-                              }}
-                            >
-                              {ent.nom[0]}
-                            </div>
-                          )}
-                        </div>
-                        <div className="ml-4">
-                          <h3 className="text-lg font-semibold text-gray-900">
-                            {ent.nom}
-                          </h3>
-                          <p className="text-sm text-gray-600">{ent.secteur}</p>
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-xs text-gray-600">
-                          <span className="font-medium">Adresse:</span>{" "}
-                          {ent.adresse}
-                        </p>
-                        <p className="text-xs text-gray-600">
-                          <span className="font-medium">Employés:</span>{" "}
-                          {ent._count?.employes || 0}
-                        </p>
-                        <p className="text-xs text-gray-600">
-                          <span className="font-medium">Devise:</span>{" "}
-                          {ent.devise}
-                        </p>
-                        <p className="text-xs text-gray-600">
-                          <span className="font-medium">Période:</span>{" "}
-                          {ent.typePeriode}
-                        </p>
-                      </div>
-                      <div className="flex justify-end space-x-2 mt-2">
-                        {user?.role === "SUPER_ADMIN" && (
-                          <button
-                            onClick={() => {
-                              selectEntreprise(ent.id);
-                              navigate('/dashboard');
-                            }}
-                            className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-md transition-colors"
-                            title="Sélectionner l'entreprise"
-                          >
-                            <Eye size={18} />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleEditEntreprise(ent)}
-                          className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
-                          title="Modifier"
-                        >
-                          <Edit size={18} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteEntreprise(ent.id)}
-                          className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
-                          title="Supprimer"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                  {filteredEntreprises.map((ent) => {
+                    // Correction du fallback logo
+                    let logoUrl = null;
+                    if (
+                      ent.logo &&
+                      typeof ent.logo === "string" &&
+                      ent.logo.trim() !== ""
+                    ) {
+                      if (/^https?:\/\//.test(ent.logo)) {
+                        logoUrl = ent.logo;
+                      } else {
+                        const baseUrl = (
+                          import.meta.env.VITE_API_URL
+                            ? import.meta.env.VITE_API_URL.replace("/api", "")
+                            : "http://localhost:3000"
+                        ).replace(/\/$/, "");
+                        const logoPath = ent.logo.startsWith("/")
+                          ? ent.logo
+                          : `/${ent.logo}`;
+                        logoUrl = `${baseUrl}${logoPath}`;
+                      }
+                    }
+                    return (
+                      <EntrepriseCard
+                        key={ent.id}
+                        ent={ent}
+                        user={user}
+                        selectEntreprise={selectEntreprise}
+                        navigate={navigate}
+                        handleEditEntreprise={handleEditEntreprise}
+                        handleDeleteEntreprise={handleDeleteEntreprise}
+                        logoUrl={logoUrl}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -392,8 +450,6 @@ const Entreprises = () => {
               </div>
             )}
           </div>
-
-
         </div>
       </main>
 
@@ -428,7 +484,6 @@ const Entreprises = () => {
                 </button>
               </div>
 
-
               <form onSubmit={handleSubmitForm} className="space-y-4">
                 <div className="grid grid-cols-1 gap-6">
                   <FormField
@@ -440,11 +495,17 @@ const Entreprises = () => {
                     onBlur={() => {
                       // Validation en temps réel
                       if (formData.nom.length < 1) {
-                        setFormErrors(prev => ({ ...prev, nom: 'Le nom est requis' }));
+                        setFormErrors((prev) => ({
+                          ...prev,
+                          nom: "Le nom est requis",
+                        }));
                       } else if (formData.nom.length > 100) {
-                        setFormErrors(prev => ({ ...prev, nom: 'Le nom ne peut pas dépasser 100 caractères' }));
+                        setFormErrors((prev) => ({
+                          ...prev,
+                          nom: "Le nom ne peut pas dépasser 100 caractères",
+                        }));
                       } else {
-                        setFormErrors(prev => ({ ...prev, nom: '' }));
+                        setFormErrors((prev) => ({ ...prev, nom: "" }));
                       }
                     }}
                     error={formErrors.nom}
@@ -460,11 +521,18 @@ const Entreprises = () => {
                     onChange={handleFormChange}
                     onBlur={() => {
                       if (formData.adresse.length < 1) {
-                        setFormErrors(prev => ({ ...prev, adresse: 'L\'adresse est requise' }));
+                        setFormErrors((prev) => ({
+                          ...prev,
+                          adresse: "L'adresse est requise",
+                        }));
                       } else if (formData.adresse.length > 255) {
-                        setFormErrors(prev => ({ ...prev, adresse: 'L\'adresse ne peut pas dépasser 255 caractères' }));
+                        setFormErrors((prev) => ({
+                          ...prev,
+                          adresse:
+                            "L'adresse ne peut pas dépasser 255 caractères",
+                        }));
                       } else {
-                        setFormErrors(prev => ({ ...prev, adresse: '' }));
+                        setFormErrors((prev) => ({ ...prev, adresse: "" }));
                       }
                     }}
                     error={formErrors.adresse}
@@ -480,11 +548,18 @@ const Entreprises = () => {
                     onChange={handleFormChange}
                     onBlur={() => {
                       if (formData.secteur.length < 1) {
-                        setFormErrors(prev => ({ ...prev, secteur: 'Le secteur est requis' }));
+                        setFormErrors((prev) => ({
+                          ...prev,
+                          secteur: "Le secteur est requis",
+                        }));
                       } else if (formData.secteur.length > 50) {
-                        setFormErrors(prev => ({ ...prev, secteur: 'Le secteur ne peut pas dépasser 50 caractères' }));
+                        setFormErrors((prev) => ({
+                          ...prev,
+                          secteur:
+                            "Le secteur ne peut pas dépasser 50 caractères",
+                        }));
                       } else {
-                        setFormErrors(prev => ({ ...prev, secteur: '' }));
+                        setFormErrors((prev) => ({ ...prev, secteur: "" }));
                       }
                     }}
                     error={formErrors.secteur}
@@ -495,8 +570,15 @@ const Entreprises = () => {
                   <LogoUploader
                     entrepriseId={editingEntreprise?.id}
                     currentLogo={editingEntreprise?.logo}
-                    onLogoChange={(logoPath) => {
-                      setFormData(prev => ({ ...prev, logo: logoPath }));
+                    autoUpload={false}
+                    onLogoChange={(logoFile) => {
+                      // Stocker le fichier dans formData pour l'uploader après création/modification
+                      if (logoFile instanceof File) {
+                        setFormData((prev) => ({
+                          ...prev,
+                          logo: logoFile,
+                        }));
+                      }
                     }}
                   />
 
@@ -590,5 +672,90 @@ const Entreprises = () => {
     </div>
   );
 };
+
+function EntrepriseCard({
+  ent,
+  user,
+  selectEntreprise,
+  navigate,
+  handleEditEntreprise,
+  handleDeleteEntreprise,
+  logoUrl,
+}) {
+  const [imgError, setImgError] = useState(false);
+  return (
+    <div
+      key={ent.id}
+      className="bg-gray-50 rounded-lg p-6 shadow-lg hover:shadow-xl transition-all duration-500 transform hover:scale-95"
+    >
+      <div className="flex items-center mb-4">
+        <div className="flex-shrink-0 h-16 w-16">
+          {logoUrl && !imgError ? (
+            <img
+              src={logoUrl}
+              alt={`${ent.nom} logo`}
+              className="h-16 w-16 rounded-full object-cover border-2 border-white shadow-md"
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <div
+              className="h-16 w-16 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-md"
+              style={{ backgroundColor: ent.couleurPrincipale || "#6366f1" }}
+            >
+              {ent.nom[0]}
+            </div>
+          )}
+        </div>
+        <div className="ml-4">
+          <h3 className="text-lg font-semibold text-gray-900">{ent.nom}</h3>
+          <p className="text-sm text-gray-600">{ent.secteur}</p>
+        </div>
+      </div>
+      <div className="space-y-1">
+        <p className="text-xs text-gray-600">
+          <span className="font-medium">Adresse:</span> {ent.adresse}
+        </p>
+        <p className="text-xs text-gray-600">
+          <span className="font-medium">Employés:</span>{" "}
+          {ent._count?.employes || 0}
+        </p>
+        <p className="text-xs text-gray-600">
+          <span className="font-medium">Devise:</span> {ent.devise}
+        </p>
+        <p className="text-xs text-gray-600">
+          <span className="font-medium">Période:</span> {ent.typePeriode}
+        </p>
+      </div>
+      <div className="flex justify-end space-x-2 mt-2">
+        {user?.role === "SUPER_ADMIN" && (
+          <button
+            onClick={() => {
+              selectEntreprise(ent.id);
+              navigate("/dashboard");
+            }}
+            className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-md transition-colors"
+            title="Sélectionner l'entreprise"
+          >
+            <Eye size={18} />
+          </button>
+        )}
+        <button
+          onClick={() => handleEditEntreprise(ent)}
+          className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
+          title="Modifier"
+        >
+          <Edit size={18} />
+        </button>
+        <button
+          onClick={() => handleDeleteEntreprise(ent.id)}
+          className="p-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+          title="Supprimer"
+        >
+          <Trash2 size={18} />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default Entreprises;

@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
-  const [selectedEntreprise, setSelectedEntreprise] = useState(null);
+  const [selectedEntreprise, setSelectedEntreprise] = useState(localStorage.getItem('selectedEntreprise') ? Number(localStorage.getItem('selectedEntreprise')) : null);
   const [selectedEnterpriseData, setSelectedEnterpriseData] = useState(null);
 
   useEffect(() => {
@@ -52,6 +52,21 @@ export const AuthProvider = ({ children }) => {
     }
   }, [token]);
 
+  // Load enterprise data when selectedEntreprise is restored from localStorage
+  useEffect(() => {
+    if (selectedEntreprise && !selectedEnterpriseData) {
+      api.get(`/entreprises/${selectedEntreprise}`)
+        .then(response => {
+          setSelectedEnterpriseData(response.data);
+        })
+        .catch(error => {
+          console.error('Error fetching enterprise data on init:', error);
+          setSelectedEntreprise(null);
+          localStorage.removeItem('selectedEntreprise');
+        });
+    }
+  }, [selectedEntreprise, selectedEnterpriseData]);
+
   const login = (newToken) => {
     localStorage.setItem('token', newToken);
     setToken(newToken);
@@ -59,6 +74,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('selectedEntreprise');
     setToken(null);
     setUser(null);
     setSelectedEntreprise(null);
@@ -70,6 +86,7 @@ export const AuthProvider = ({ children }) => {
     setSelectedEntreprise(id);
     setApiSelectedEntreprise(id);
     if (id) {
+      localStorage.setItem('selectedEntreprise', id.toString());
       try {
         const response = await api.get(`/entreprises/${id}`);
         setSelectedEnterpriseData(response.data);
@@ -78,6 +95,7 @@ export const AuthProvider = ({ children }) => {
         setSelectedEnterpriseData(null);
       }
     } else {
+      localStorage.removeItem('selectedEntreprise');
       setSelectedEnterpriseData(null);
     }
   };

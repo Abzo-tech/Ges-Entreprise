@@ -65,7 +65,7 @@ const PayRuns = () => {
     try {
       const response = await api.get('/entreprises');
       console.log('Entreprises response:', response);
-      const data = response.data;
+      const data = response.data.data;
       setEntreprises(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Erreur lors du chargement des entreprises', err);
@@ -85,9 +85,9 @@ const PayRuns = () => {
 
   const fetchJournaliers = async () => {
     try {
-      const response = await api.get(`/employes?entrepriseId=${selectedEntreprise}&typeContrat=Freelance`);
+      const response = await api.get(`/employes?entrepriseId=${selectedEntreprise.id}&typeContrat=Freelance`);
       console.log('Journaliers response:', response);
-      const data = response.data;
+      const data = response.data.data;
       setJournaliers(Array.isArray(data) ? data : []);
       // Initialiser les jours travaillés à 0
       const initialJours = {};

@@ -1,12 +1,18 @@
-import { useState, useRef } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { Upload, X, Image as ImageIcon, AlertCircle } from 'lucide-react';
-import api from '../services/api';
+import { useState, useRef } from "react";
+import { useAuth } from "../context/AuthContext";
+import { Upload, X, Image as ImageIcon, AlertCircle } from "lucide-react";
+import api from "../services/api";
 
-const LogoUploader = ({ entrepriseId, currentLogo, onLogoChange, className = "" }) => {
+const LogoUploader = ({
+  entrepriseId,
+  currentLogo,
+  onLogoChange,
+  className = "",
+  autoUpload = true, // Nouveau prop pour contrôler l'upload automatique
+}) => {
   const { user } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [preview, setPreview] = useState(currentLogo || null);
   const fileInputRef = useRef(null);
 
@@ -14,18 +20,22 @@ const LogoUploader = ({ entrepriseId, currentLogo, onLogoChange, className = "" 
     const file = event.target.files[0];
     if (!file) return;
 
-    // Validation côté client
-    if (!file.type.startsWith('image/')) {
-      setError('Veuillez sélectionner un fichier image valide');
+    // Validation côté client - Seuls JPEG et PNG sont acceptés
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
+    if (!allowedTypes.includes(file.type)) {
+      setError(
+        "Format non autorisé. Seuls les formats JPEG et PNG sont acceptés"
+      );
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) { // 5MB
-      setError('Le fichier ne doit pas dépasser 5MB');
+    if (file.size > 5 * 1024 * 1024) {
+      // 5MB
+      setError("Le fichier ne doit pas dépasser 5MB");
       return;
     }
 
-    setError('');
+    setError("");
 
     // Créer un aperçu
     const reader = new FileReader();
@@ -34,36 +44,50 @@ const LogoUploader = ({ entrepriseId, currentLogo, onLogoChange, className = "" 
     };
     reader.readAsDataURL(file);
 
-    // Upload automatique
-    uploadLogo(file);
+    // Upload automatique seulement si autoUpload est true ET entrepriseId existe
+    if (autoUpload && entrepriseId) {
+      uploadLogo(file);
+    } else {
+      // Sinon, on passe juste le fichier au parent via onLogoChange
+      onLogoChange(file);
+    }
   };
 
   const uploadLogo = async (file) => {
     if (!entrepriseId) {
-      setError('ID entreprise manquant');
+      setError("ID entreprise manquant");
       return;
     }
 
     setIsUploading(true);
-    setError('');
+    setError("");
 
     try {
       const formData = new FormData();
-      formData.append('logo', file);
+      formData.append("logo", file);
 
-      const response = await api.post(`/files/upload/logo/${entrepriseId}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await api.post(
+        `/files/upload/logo/${entrepriseId}`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
 
       const newLogoPath = response.data.logoPath;
-      setPreview(`${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${newLogoPath}`);
+      setPreview(
+        `${
+          import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"
+        }${newLogoPath}`
+      );
       onLogoChange(newLogoPath);
-
     } catch (error) {
-      console.error('Erreur lors de l\'upload:', error);
-      setError(error.response?.data?.error || 'Erreur lors de l\'upload du logo');
+      console.error("Erreur lors de l'upload:", error);
+      setError(
+        error.response?.data?.error || "Erreur lors de l'upload du logo"
+      );
       setPreview(currentLogo || null);
     } finally {
       setIsUploading(false);
@@ -74,15 +98,15 @@ const LogoUploader = ({ entrepriseId, currentLogo, onLogoChange, className = "" 
     if (!currentLogo) return;
 
     try {
-      await api.delete('/files/logo', {
-        data: { logoPath: currentLogo }
+      await api.delete("/files/logo", {
+        data: { logoPath: currentLogo },
       });
 
       setPreview(null);
       onLogoChange(null);
     } catch (error) {
-      console.error('Erreur lors de la suppression:', error);
-      setError('Erreur lors de la suppression du logo');
+      console.error("Erreur lors de la suppression:", error);
+      setError("Erreur lors de la suppression du logo");
     }
   };
 
@@ -90,7 +114,7 @@ const LogoUploader = ({ entrepriseId, currentLogo, onLogoChange, className = "" 
     fileInputRef.current?.click();
   };
 
-  const canUpload = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN';
+  const canUpload = user?.role === "SUPER_ADMIN" || user?.role === "ADMIN";
 
   return (
     <div className={`space-y-4 ${className}`}>
@@ -109,9 +133,13 @@ const LogoUploader = ({ entrepriseId, currentLogo, onLogoChange, className = "" 
         <div
           className={`
             relative w-24 h-24 border-2 border-dashed rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200
-            ${preview ? 'border-gray-300 bg-gray-50' : 'border-gray-300 hover:border-primary-400 hover:bg-primary-50'}
-            ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}
-            ${!canUpload ? 'cursor-not-allowed opacity-50' : ''}
+            ${
+              preview
+                ? "border-gray-300 bg-gray-50"
+                : "border-gray-300 hover:border-primary-400 hover:bg-primary-50"
+            }
+            ${isUploading ? "opacity-50 cursor-not-allowed" : ""}
+            ${!canUpload ? "cursor-not-allowed opacity-50" : ""}
           `}
           onClick={canUpload ? triggerFileSelect : undefined}
         >
@@ -151,7 +179,7 @@ const LogoUploader = ({ entrepriseId, currentLogo, onLogoChange, className = "" 
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/jpg,image/png"
             onChange={handleFileSelect}
             className="hidden"
             disabled={!canUpload || isUploading}
@@ -161,7 +189,7 @@ const LogoUploader = ({ entrepriseId, currentLogo, onLogoChange, className = "" 
         {/* Informations et actions */}
         <div className="flex-1">
           <div className="text-sm text-gray-600 space-y-1">
-            <p>• Formats acceptés: JPEG, PNG, GIF, WebP</p>
+            <p>• Formats acceptés: JPEG, PNG</p>
             <p>• Taille maximale: 5MB</p>
             <p>• Dimensions recommandées: 200x200px</p>
           </div>
@@ -174,7 +202,7 @@ const LogoUploader = ({ entrepriseId, currentLogo, onLogoChange, className = "" 
               className="btn-outline-primary mt-3 text-sm px-3 py-1"
             >
               <Upload className="h-4 w-4 mr-2" />
-              {preview ? 'Changer le logo' : 'Ajouter un logo'}
+              {preview ? "Changer le logo" : "Ajouter un logo"}
             </button>
           )}
         </div>
@@ -182,8 +210,9 @@ const LogoUploader = ({ entrepriseId, currentLogo, onLogoChange, className = "" 
 
       {/* Message d'aide */}
       <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded-lg">
-        <strong>Conseil:</strong> Utilisez un logo avec un fond transparent pour un meilleur rendu.
-        Le logo sera automatiquement redimensionné et optimisé.
+        <strong>Conseil:</strong> Utilisez un logo avec un fond transparent pour
+        un meilleur rendu. Le logo sera automatiquement redimensionné et
+        optimisé.
       </div>
     </div>
   );

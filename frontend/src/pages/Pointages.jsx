@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import QRScanner from '../components/QRScanner';
 import {
   ClockIcon,
   UserGroupIcon,
@@ -13,7 +14,8 @@ import {
   StopIcon,
   EyeIcon,
   PencilIcon,
-  TrashIcon
+  TrashIcon,
+  QrCodeIcon
 } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -42,6 +44,7 @@ const Pointages = () => {
   });
   const [showForm, setShowForm] = useState(false);
   const [editingPointage, setEditingPointage] = useState(null);
+  const [showQRScanner, setShowQRScanner] = useState(false);
   const [formData, setFormData] = useState({
     employeId: '',
     datePointage: format(new Date(), 'yyyy-MM-dd'),
@@ -104,6 +107,36 @@ const Pointages = () => {
     } catch (err) {
       setError(err.response?.data?.error || 'Erreur lors du pointage départ');
     }
+  };
+
+  const handleQRScanSuccess = async (qrData) => {
+    try {
+      setShowQRScanner(false);
+
+      // Essayer d'abord le check-in
+      try {
+        await api.post('/pointages/qr/check-in', { qrData });
+        fetchPointages();
+        return;
+      } catch (checkInError) {
+        // Si check-in échoue, essayer check-out
+        try {
+          await api.post('/pointages/qr/check-out', { qrData });
+          fetchPointages();
+          return;
+        } catch (checkOutError) {
+          // Si les deux échouent, afficher l'erreur la plus pertinente
+          throw checkInError;
+        }
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Erreur lors du pointage QR');
+    }
+  };
+
+  const handleQRScanError = (error) => {
+    console.error('QR Scan error:', error);
+    setError('Erreur du scanner QR');
   };
 
   const handleSubmit = async (e) => {
@@ -186,16 +219,25 @@ const Pointages = () => {
           <h1 className="text-2xl font-bold text-gray-900">Gestion des Pointages</h1>
           <p className="text-gray-600">Suivi des heures de travail des employés</p>
         </div>
-        <button
-          onClick={() => setShowForm(true)}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white"
-          style={{ backgroundColor: primaryColor }}
-          onMouseEnter={(e) => e.target.style.backgroundColor = darkenColor(primaryColor, 20)}
-          onMouseLeave={(e) => e.target.style.backgroundColor = primaryColor}
-        >
-          <ClockIcon className="h-5 w-5 mr-2" />
-          Nouveau Pointage
-        </button>
+        <div className="flex space-x-3">
+          <button
+            onClick={() => setShowQRScanner(true)}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+          >
+            <QrCodeIcon className="h-5 w-5 mr-2" />
+            Scanner QR
+          </button>
+          <button
+            onClick={() => setShowForm(true)}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white"
+            style={{ backgroundColor: primaryColor }}
+            onMouseEnter={(e) => e.target.style.backgroundColor = darkenColor(primaryColor, 20)}
+            onMouseLeave={(e) => e.target.style.backgroundColor = primaryColor}
+          >
+            <ClockIcon className="h-5 w-5 mr-2" />
+            Nouveau Pointage
+          </button>
+        </div>
       </div>
 
       {/* Filtres */}
@@ -526,6 +568,15 @@ const Pointages = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* QR Scanner Modal */}
+      {showQRScanner && (
+        <QRScanner
+          onScanSuccess={handleQRScanSuccess}
+          onScanError={handleQRScanError}
+          onClose={() => setShowQRScanner(false)}
+        />
       )}
     </div>
   );

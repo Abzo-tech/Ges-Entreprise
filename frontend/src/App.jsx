@@ -12,6 +12,7 @@ import Paiements from './pages/Paiements';
 import Utilisateurs from './pages/Utilisateurs';
 import Entreprises from './pages/Entreprises';
 import Pointages from './pages/Pointages';
+import VigileDashboard from './pages/VigileDashboard';
 import './App.css';
 
 const PrivateRoute = ({ children }) => {
@@ -20,6 +21,22 @@ const PrivateRoute = ({ children }) => {
 
   const LayoutComponent = selectedEntreprise ? EnterpriseLayout : Layout;
   return <LayoutComponent>{children}</LayoutComponent>;
+};
+
+const RoleBasedRoute = ({ children, allowedRoles = [] }) => {
+  const { user } = useAuth();
+
+  if (!user) return <Navigate to="/login" />;
+
+  if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+    // Redirect based on role
+    if (user.role === 'VIGILE') {
+      return <Navigate to="/vigile" />;
+    }
+    return <Navigate to="/dashboard" />;
+  }
+
+  return children;
 };
 
 function App() {
@@ -31,7 +48,16 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={
             <PrivateRoute>
-              <Dashboard />
+              <RoleBasedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'CAISSIER']}>
+                <Dashboard />
+              </RoleBasedRoute>
+            </PrivateRoute>
+          } />
+          <Route path="/vigile" element={
+            <PrivateRoute>
+              <RoleBasedRoute allowedRoles={['VIGILE']}>
+                <VigileDashboard />
+              </RoleBasedRoute>
             </PrivateRoute>
           } />
           <Route path="/employes" element={

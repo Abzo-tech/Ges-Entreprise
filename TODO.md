@@ -1,29 +1,52 @@
-# TODO: Système de Pointage avec QR Code
+# TODO - QR Code Attendance System
 
-## Phase 1: Tester les fonctionnalités existantes
-- [ ] Vérifier la configuration MySQL et créer la base de données
-- [ ] Démarrer le système (backend + frontend)
-- [ ] Se connecter à l'application
-- [ ] Tester la création manuelle de pointage
-- [ ] Tester clock-in/clock-out
-- [ ] Tester les filtres (employé, statut, dates)
-- [ ] Tester modification/suppression de pointage
-- [ ] Vérifier les statistiques et rapports
+## Completed ✅
+- [x] Add qrCode field to Employe model in schema.prisma
+- [x] Install qrcode and @types/qrcode in backend
+- [x] Install html5-qrcode in frontend (replaced react-qr-reader for React 18 compatibility)
+- [x] Implement generateQRCode() and getQRCode() in EmployeService
+- [x] Add generateQRCode and getQRCode handlers in EmployeController
+- [x] Add GET/POST /employes/:id/qr routes in EmployeRoute
+- [x] Implement qrCheckIn() and qrCheckOut() in PointageService
+- [x] Add qrCheckIn and qrCheckOut handlers in PointageController
+- [x] Add POST /qr/check-in and /qr/check-out routes in PointageRoute
+- [x] Create QRCodeDisplay component
+- [x] Create QRScanner component (updated to use html5-qrcode)
+- [x] Add QR scanner button and functionality to Pointages.jsx
+- [x] Add QR code display button and modal to Employes.jsx
+- [x] Run Prisma migrate to update database schema
+- [x] Start the application (backend + frontend)
+- [x] Add VIGILE role to schema and permissions
+- [x] Create VigileDashboard page for security guards
+- [x] Update routing for role-based access
+- [x] Update sidebar navigation based on user role
+- [x] Add vigile user to seed data
+- [x] Run database migration and seed
 
-## Phase 2: Ajouter la fonctionnalité QR Code
-- [ ] Installer les dépendances (qrcode, react-qr-reader)
-- [ ] Créer composant QRCodeDisplay pour afficher le QR d'un employé
-- [ ] Créer composant QRScanner pour scanner les QR codes
-- [ ] Ajouter endpoint backend pour générer QR codes
-- [ ] Modifier PointageService pour check-in/out via QR
-- [ ] Mettre à jour l'interface Pointages.jsx pour inclure QR
-- [ ] Tester les nouvelles fonctionnalités QR
+## Testing Phase 🔄
+- [ ] Test manual pointage creation
+- [ ] Test clock-in/clock-out functionality
+- [ ] Test QR code generation for employees
+- [ ] Test QR code scanning for check-in/out
+- [ ] Verify permissions and error handling
+- [ ] Test vigile role login and dashboard access
+- [ ] Test QR scanning from vigile dashboard
+- [ ] Verify pointages are validated by vigile user
 
-## Fichiers à modifier
-- backend/package.json
-- frontend/package.json
-- backend/src/services/PointageService.ts
-- backend/src/controllers/PointageController.ts
-- backend/src/routes/PointageRoute.ts
-- frontend/src/pages/Pointages.jsx
-- Nouveaux composants: QRCodeDisplay.jsx, QRScanner.jsx
+## Next Steps 📋
+- [ ] Fix any TypeScript errors
+- [ ] Test on mobile devices for QR scanning
+- [ ] Add QR code printing functionality
+- [ ] Implement bulk QR code generation
+- [ ] Add QR code expiration/refresh mechanism
+- [ ] Add analytics for QR usage
+
+## Notes 📝
+- QR codes contain employee ID as plain text (simplified from JSON format)
+- Backend validates QR data before processing pointage
+- Frontend uses html5-qrcode library for camera access (React 18 compatible)
+- Permissions are checked for all operations
+- Application is running:
+  - Backend: http://localhost:3000
+  - Frontend: http://localhost:5173
+  - API Docs: http://localhost:3000/api-docs

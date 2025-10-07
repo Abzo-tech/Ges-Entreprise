@@ -10,6 +10,7 @@ import {
   Bars3Icon,
   XMarkIcon,
   BuildingOfficeIcon,
+  QrCodeIcon,
 } from "@heroicons/react/24/outline";
 import { useState } from "react";
 
@@ -25,45 +26,66 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     navigate("/login");
   };
 
-  const navItems = [
-    {
-      to: "/dashboard",
-      label: "Dashboard",
-      icon: HomeIcon,
-    },
-    {
-      to: "/entreprises",
-      label: "Entreprises",
-      icon: BuildingStorefrontIcon,
-      roles: ["SUPER_ADMIN"], // Only super admin can see entreprises
-    },
-    {
-      to: "/employes",
-      label: "Employés",
-      icon: UsersIcon,
-    },
-    {
-      to: "/payruns",
-      label: "Pay Runs",
-      icon: DocumentTextIcon,
-    },
-    {
-      to: "/payslips",
-      label: "Bulletins",
-      icon: DocumentTextIcon,
-    },
-    {
-      to: "/paiements",
-      label: "Paiements",
-      icon: CreditCardIcon,
-    },
-    {
-      to: "/utilisateurs",
-      label: "Utilisateurs",
-      icon: UserGroupIcon,
-      roles: ["SUPER_ADMIN"], // Only super admin can see utilisateurs
-    },
-  ];
+  // Define navigation items based on user role
+  const getNavItems = () => {
+    if (user?.role === 'VIGILE') {
+      return [
+        {
+          to: "/vigile",
+          label: "Pointage QR",
+          icon: QrCodeIcon,
+        },
+      ];
+    }
+
+    // Default navigation for other roles
+    return [
+      {
+        to: "/dashboard",
+        label: "Dashboard",
+        icon: HomeIcon,
+      },
+      {
+        to: "/entreprises",
+        label: "Entreprises",
+        icon: BuildingStorefrontIcon,
+        roles: ["SUPER_ADMIN"], // Only super admin can see entreprises
+      },
+      {
+        to: "/employes",
+        label: "Employés",
+        icon: UsersIcon,
+      },
+      {
+        to: "/pointages",
+        label: "Pointages",
+        icon: DocumentTextIcon,
+      },
+      {
+        to: "/payruns",
+        label: "Pay Runs",
+        icon: DocumentTextIcon,
+      },
+      {
+        to: "/payslips",
+        label: "Bulletins",
+        icon: DocumentTextIcon,
+      },
+      {
+        to: "/paiements",
+        label: "Paiements",
+        icon: CreditCardIcon,
+      },
+      {
+        to: "/utilisateurs",
+        label: "Utilisateurs",
+        icon: UserGroupIcon,
+        roles: ["SUPER_ADMIN"], // Only super admin can see utilisateurs
+      },
+    ];
+  };
+
+  const navItems = getNavItems();
 
   // Filter nav items based on user role
   const filteredNavItems = navItems.filter((item) => {

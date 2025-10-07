@@ -3,12 +3,14 @@ import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../components/ThemeProvider";
 import api from "../services/api";
 import Pagination from "../components/Pagination";
+import QRCodeDisplay from "../components/QRCodeDisplay";
 import {
   PlusIcon,
   PencilIcon,
   TrashIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
+  QrCodeIcon,
 } from "@heroicons/react/24/outline";
 
 const Employes = () => {
@@ -25,6 +27,8 @@ const Employes = () => {
   });
   const [showModal, setShowModal] = useState(false);
   const [editingEmploye, setEditingEmploye] = useState(null);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [selectedEmployeForQR, setSelectedEmployeForQR] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -228,6 +232,11 @@ const Employes = () => {
     }
   };
 
+  const handleShowQR = (employe) => {
+    setSelectedEmployeForQR(employe);
+    setShowQRModal(true);
+  };
+
   const totalPages = Math.ceil(total / itemsPerPage);
 
   const SkeletonLoader = () => (
@@ -417,6 +426,14 @@ const Employes = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                      <button
+                        onClick={() => handleShowQR(employe)}
+                        className="px-3 py-1 bg-blue-100 text-blue-800 rounded-lg text-xs font-medium hover:bg-blue-200 transition-all"
+                        title="Afficher QR Code"
+                      >
+                        <QrCodeIcon className="h-4 w-4 inline mr-1" />
+                        QR
+                      </button>
                       <button
                         onClick={() =>
                           handleToggleActif(employe.id, employe.actif)
@@ -659,6 +676,37 @@ const Employes = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* QR Code Modal */}
+      {showQRModal && selectedEmployeForQR && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowQRModal(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-neutral-900">
+                  QR Code de pointage
+                </h3>
+                <button
+                  onClick={() => setShowQRModal(false)}
+                  className="text-neutral-400 hover:text-neutral-600"
+                >
+                  ✕
+                </button>
+              </div>
+              <QRCodeDisplay
+                employeId={selectedEmployeForQR.id}
+                employeName={`${selectedEmployeForQR.prenom} ${selectedEmployeForQR.nom}`}
+              />
             </div>
           </div>
         </div>

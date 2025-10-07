@@ -197,7 +197,7 @@ const Utilisateurs = () => {
           </div>
         </div>
       </header>
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto py-2 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
@@ -247,7 +247,7 @@ const Utilisateurs = () => {
             {loading ? (
               <div className="px-6 py-4 text-center">Chargement...</div>
             ) : (
-              <ul className="divide-y divide-gray-200">
+              <ul className="divide-y divide-gray-200 max-h-97 overflow-y-auto scrollbar-hide">
                 {utilisateurs.map((user) => (
                   <li key={user.id} className="px-6 py-4">
                     <div className="flex items-center justify-between">
@@ -309,6 +309,15 @@ const Utilisateurs = () => {
               </ul>
             )}
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+          )}
         </div>
       </main>
 
