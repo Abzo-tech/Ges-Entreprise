@@ -30,14 +30,51 @@ export const AuthProvider = ({ children }) => {
       import("../utils/jwtDecodeWrapper.js").then(({ jwtDecodeWrapper }) => {
         jwtDecodeWrapper(token)
           .then((decoded) => {
-            setUser({
+            const userData = {
               id: decoded.id,
+              nom: decoded.nom,
               role: decoded.role,
               entreprises: decoded.entreprises || [],
-            });
+            };
+            setUser(userData);
             api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
             // Also set token in localStorage to persist
             localStorage.setItem("token", token);
+
+            // Auto-select entreprise for ADMIN users if they have exactly one entreprise
+            if (
+              decoded.role === "ADMIN" &&
+              decoded.entreprises &&
+              decoded.entreprises.length === 1
+            ) {
+              const entrepriseId = decoded.entreprises[0];
+              // Only auto-select if no entreprise is currently selected
+              if (!selectedEntreprise) {
+                console.log(
+                  "Auto-selecting entreprise for ADMIN:",
+                  entrepriseId
+                );
+                setSelectedEntreprise(entrepriseId);
+                setApiSelectedEntreprise(entrepriseId);
+                localStorage.setItem(
+                  "selectedEntreprise",
+                  entrepriseId.toString()
+                );
+
+                // Fetch entreprise data
+                api
+                  .get(`/entreprises/${entrepriseId}`)
+                  .then((response) => {
+                    setSelectedEnterpriseData(response.data);
+                  })
+                  .catch((error) => {
+                    console.error(
+                      "Error fetching auto-selected entreprise:",
+                      error
+                    );
+                  });
+              }
+            }
           })
           .catch((error) => {
             console.error("Invalid token:", error);

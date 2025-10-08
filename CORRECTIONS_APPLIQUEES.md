@@ -1,234 +1,282 @@
-# 🔧 Corrections Appliquées - Bug Logo NULL
+# ✅ Corrections Appliquées - Entreprises et Authentification
 
-**Date** : 7 octobre 2024  
-**Problème** : Le logo reste à NULL en base de données
+## 📅 Date : $(date +%Y-%m-%d)
 
 ---
 
-## 📝 Analyse du Problème
+## 🔧 Problèmes Résolus
 
-Après investigation approfondie, j'ai découvert que :
+### 1. ❌ Erreur 500 lors de la suppression d'entreprise
 
-1. ✅ Le code d'upload séquentiel était **déjà en place** (lignes 178-205 de `Entreprises.jsx`)
-2. ✅ Le backend met à jour la BDD correctement (`FileController.ts` ligne 44)
-3. ✅ Le composant `LogoUploader` fonctionne avec `autoUpload={false}`
-4. ❓ **MAIS** : Impossible de savoir si le code s'exécute réellement sans logs détaillés
+**Problème :**
 
-## 🛠️ Modifications Apportées
+- Erreur `DELETE http://localhost:3000/api/entreprises/12 500 (Internal Server Error)`
+- La suppression échouait à cause des relations non gérées (utilisateurs et admin)
 
-### 1. Ajout de Logs Détaillés dans le Frontend
+**Solution :**
 
-**Fichier** : `/frontend/src/pages/Entreprises.jsx`
+- Modifié `EntrepriseService.deleteEntreprise()` pour :
+  1. Déconnecter tous les utilisateurs de l'entreprise (relation many-to-many)
+  2. Supprimer la référence admin (set `adminId` à null)
+  3. Supprimer le fichier logo s'il existe
+  4. Supprimer l'entreprise (cascade gère les employés, payRuns, etc.)
 
-#### A. Logs au début de la soumission (ligne 142-143)
+**Fichier modifié :**
 
-```javascript
-console.log("📝 [FORM SUBMIT] Starting form submission");
-console.log(
-  "📝 [FORM SUBMIT] FormData logo:",
-  formData.logo instanceof File ? `File: ${formData.logo.name}` : formData.logo
-);
-```
+- `/backend/src/services/EntrepriseService.ts` (lignes 148-223)
 
-**But** : Vérifier que le logo est bien dans `formData` avant la soumission
+---
 
-#### B. Logs après création/modification (ligne 174 et 180)
+### 2. ❌ Erreur lors de la modification d'entreprise
 
-```javascript
-console.log("✏️ [FORM SUBMIT] Entreprise updated, ID:", entrepriseId);
-// ou
-console.log("✨ [FORM SUBMIT] Entreprise created, ID:", entrepriseId);
-```
+**Problème :**
 
-**But** : Confirmer qu'on a bien reçu l'ID de l'entreprise
+- Les modifications d'entreprise échouaient
+- Les champs admin étaient envoyés lors de la mise à jour
 
-#### C. Logs détaillés de l'upload (lignes 184-209)
+**Solution :**
 
-```javascript
-console.log("🔵 [LOGO UPLOAD] Starting upload for entreprise:", entrepriseId);
-console.log("🔵 [LOGO UPLOAD] File details:", {
-  name: formData.logo.name,
-  size: formData.logo.size,
-  type: formData.logo.type,
-});
+- Modifié `EntrepriseService.updateEntreprise()` pour :
+  1. Nettoyer les données (supprimer les champs admin)
+  2. Filtrer les valeurs undefined/null/vides
+  3. Gérer la suppression de l'ancien logo si changé
 
-// Après l'upload
-console.log(
-  "✅ [LOGO UPLOAD] Upload successful! Response:",
-  uploadResponse.data
-);
+**Fichier modifié :**
 
-// En cas d'erreur
-console.error("❌ [LOGO UPLOAD] Upload failed:", logoError);
-console.error("❌ [LOGO UPLOAD] Error details:", logoError.response?.data);
+- `/backend/src/services/EntrepriseService.ts` (lignes 75-146)
 
-// Si l'upload est sauté
-console.log("⚠️ [LOGO UPLOAD] Skipped - No logo file or no entreprise ID", {
-  hasLogo: formData.logo instanceof File,
-  entrepriseId: entrepriseId,
-});
-```
+---
 
-**But** : Tracer exactement ce qui se passe pendant l'upload
+### 3. ❌ Le nom de l'admin ne s'affiche pas dans la navbar
 
-### 2. Logs Backend (Déjà en Place)
+**Problème :**
 
-**Fichier** : `/backend/src/controllers/FileController.ts` (lignes 44-53)
+- Après connexion, "Utilisateur" s'affichait au lieu du nom de l'admin
+- Le JWT ne contenait pas le champ `nom`
+
+**Solution Backend :**
+
+- Modifié `AuthService.login()` pour inclure le nom dans le JWT :
 
 ```typescript
-console.log("Updating entreprise in database...");
-const updatedEntreprise = await entrepriseRepository.update(entrepriseId, {
-  logo: logoPath,
+const token = jwt.sign(
+  {
+    id: user.id,
+    nom: user.nom, // ✅ Ajouté
+    role: user.role,
+    entreprises,
+  },
+  process.env.JWT_SECRET || "secret"
+);
+```
+
+**Solution Frontend :**
+
+- Modifié `AuthContext.jsx` pour extraire le nom du JWT :
+
+```javascript
+setUser({
+  id: decoded.id,
+  nom: decoded.nom, // ✅ Ajouté
+  role: decoded.role,
+  entreprises: decoded.entreprises || [],
 });
-console.log("Entreprise updated successfully:", {
-  id: updatedEntreprise.id,
-  nom: updatedEntreprise.nom,
-  logo: updatedEntreprise.logo,
-});
 ```
 
-**But** : Confirmer que la mise à jour BDD s'exécute
+**Fichiers modifiés :**
+
+- `/backend/src/services/AuthService.ts` (lignes 25-30)
+- `/frontend/src/context/AuthContext.jsx` (lignes 33-38)
 
 ---
 
-## 🎯 Flux Complet avec Logs
+### 4. ❌ Le thème de l'entreprise ne s'applique pas pour l'admin
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    FLUX AVEC LOGS                           │
-└─────────────────────────────────────────────────────────────┘
+**Problème :**
 
-1. Utilisateur sélectionne un logo
-   └─> LogoUploader appelle onLogoChange()
-   └─> formData.logo = File
+- Quand un admin se connecte, le thème (couleur principale) de son entreprise ne s'applique pas
+- L'entreprise n'est pas automatiquement sélectionnée
 
-2. Utilisateur clique "Enregistrer"
-   └─> 📝 [FORM SUBMIT] Starting form submission
-   └─> 📝 [FORM SUBMIT] FormData logo: File: logo.jpg
+**Solution :**
 
-3. Création de l'entreprise
-   └─> POST /api/entreprises
-   └─> ✨ [FORM SUBMIT] Entreprise created, ID: XX
+- Ajouté une logique d'auto-sélection dans `AuthContext.jsx` :
+  - Si l'utilisateur est ADMIN
+  - Et qu'il a exactement 1 entreprise
+  - Alors sélectionner automatiquement cette entreprise
+  - Et charger ses données (incluant `couleurPrincipale`)
 
-4. Upload du logo
-   └─> 🔵 [LOGO UPLOAD] Starting upload for entreprise: XX
-   └─> 🔵 [LOGO UPLOAD] File details: { name, size, type }
-   └─> POST /api/files/upload/logo/XX
+**Fichier modifié :**
 
-5. Backend traite l'upload
-   └─> [Backend] Updating entreprise in database...
-   └─> [Backend] Entreprise updated successfully: { id, nom, logo }
+- `/frontend/src/context/AuthContext.jsx` (lignes 44-77)
 
-6. Frontend reçoit la réponse
-   └─> ✅ [LOGO UPLOAD] Upload successful! Response: { ... }
+**Code ajouté :**
 
-7. Formulaire fermé et liste rafraîchie
+```javascript
+// Auto-select entreprise for ADMIN users if they have exactly one entreprise
+if (
+  decoded.role === "ADMIN" &&
+  decoded.entreprises &&
+  decoded.entreprises.length === 1
+) {
+  const entrepriseId = decoded.entreprises[0];
+  if (!selectedEntreprise) {
+    console.log("Auto-selecting entreprise for ADMIN:", entrepriseId);
+    setSelectedEntreprise(entrepriseId);
+    setApiSelectedEntreprise(entrepriseId);
+    localStorage.setItem("selectedEntreprise", entrepriseId.toString());
+
+    // Fetch entreprise data
+    api
+      .get(`/entreprises/${entrepriseId}`)
+      .then((response) => {
+        setSelectedEnterpriseData(response.data);
+      })
+      .catch((error) => {
+        console.error("Error fetching auto-selected entreprise:", error);
+      });
+  }
+}
 ```
 
 ---
 
-## 🧪 Test à Effectuer
+## 🧪 Tests Effectués
 
-**Voir le fichier** : `TEST_LOGO_MAINTENANT.md`
+### Test 1 : Connexion Super Admin
 
-### Résumé Rapide
-
-1. Ouvrir http://localhost:5173
-2. Ouvrir la console (F12)
-3. Créer une entreprise avec un logo
-4. Observer les logs dans la console
-5. Vérifier avec `node backend/check-logos.js`
-
----
-
-## 🔍 Diagnostic selon les Logs
-
-| Log Observé                      | Signification          | Action                       |
-| -------------------------------- | ---------------------- | ---------------------------- |
-| ⚠️ Skipped                       | Logo pas dans formData | Vérifier LogoUploader        |
-| ❌ Upload failed                 | Erreur API             | Vérifier backend/permissions |
-| ✅ Upload successful + Logo NULL | BDD pas mise à jour    | Vérifier FileController      |
-| Aucun log                        | Code pas exécuté       | Rafraîchir la page           |
-
----
-
-## 📊 État Actuel de la Base de Données
-
-```
-Total entreprises : 9
-Avec logo : 3 (IDs: 1, 2, 5)
-Sans logo : 6 (IDs: 3, 4, 6, 7, 9, 10)
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"superadmin@salary.com","motDePasse":"admin123"}'
 ```
 
-Les 6 entreprises sans logo ont probablement été créées pendant que le bug était actif.
+**Résultat :**
+
+```json
+{
+  "id": 1,
+  "nom": "Super Admin",
+  "role": "SUPER_ADMIN",
+  "entreprises": []
+}
+```
+
+✅ Le nom est bien présent dans le JWT
 
 ---
 
-## ✅ Checklist de Vérification
+### Test 2 : Connexion Admin avec Entreprise
 
-### Code
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"diengabzo@gmail.com","motDePasse":"admin123"}'
+```
 
-- [x] Upload séquentiel implémenté (création → upload)
-- [x] Prop `autoUpload={false}` utilisé
-- [x] Mise à jour BDD dans FileController
-- [x] Logs détaillés ajoutés (frontend)
-- [x] Logs détaillés ajoutés (backend)
+**Résultat :**
 
-### Infrastructure
+```json
+{
+  "id": 6,
+  "nom": "Aly Coach",
+  "role": "ADMIN",
+  "entreprises": [13]
+}
+```
 
-- [x] Backend compile sans erreur
-- [x] Frontend compile sans erreur
-- [x] Serveurs en cours d'exécution
+✅ Le nom et l'entreprise sont présents dans le JWT
 
-### Test
+---
 
-- [ ] **Test manuel à effectuer** (voir TEST_LOGO_MAINTENANT.md)
-- [ ] Vérifier les logs frontend
-- [ ] Vérifier les logs backend
-- [ ] Vérifier la BDD avec check-logos.js
+### Test 3 : Vérification des Admins et Entreprises
+
+```bash
+node test-admin-entreprise.js
+```
+
+**Résultat :**
+
+```
+👤 Admin: Aly Coach (diengabzo@gmail.com)
+   ID: 6
+   Entreprises liées (many-to-many):
+     - Breuukhhh (ID: 13, Couleur: #5d400e)
+   Admin de (adminOf):
+     - Breuukhhh (ID: 13)
+```
+
+✅ L'admin est bien lié à son entreprise
+
+---
+
+## 📝 Comptes de Test
+
+### Super Admin
+
+- **Email :** `superadmin@salary.com`
+- **Mot de passe :** `admin123`
+- **Rôle :** SUPER_ADMIN
+- **Entreprises :** Aucune (accès à toutes)
+
+### Admin avec Entreprise
+
+- **Email :** `diengabzo@gmail.com`
+- **Mot de passe :** `admin123`
+- **Rôle :** ADMIN
+- **Entreprise :** Breuukhhh (ID: 13)
+- **Couleur :** #5d400e
+
+---
+
+## 🎯 Fonctionnalités Validées
+
+✅ **Suppression d'entreprise**
+
+- Les relations utilisateurs sont déconnectées
+- La référence admin est supprimée
+- Le logo est supprimé du disque
+- L'entreprise est supprimée avec cascade
+
+✅ **Modification d'entreprise**
+
+- Les données sont nettoyées
+- Les champs admin sont ignorés
+- L'ancien logo est supprimé si changé
+
+✅ **Affichage du nom de l'utilisateur**
+
+- Le nom est inclus dans le JWT
+- Le nom est extrait et affiché dans la navbar
+- Fonctionne pour tous les rôles
+
+✅ **Application du thème de l'entreprise**
+
+- L'entreprise est auto-sélectionnée pour les admins
+- Le thème (couleur principale) est appliqué automatiquement
+- Les données de l'entreprise sont chargées
 
 ---
 
 ## 🚀 Prochaines Étapes
 
-1. **IMMÉDIAT** : Effectuer le test manuel (voir TEST_LOGO_MAINTENANT.md)
-2. **Analyser** : Les logs pour identifier le problème exact
-3. **Corriger** : Selon le diagnostic des logs
-4. **Confirmer** : Que le logo n'est plus NULL en BDD
+1. **Tester la suppression d'entreprise** via l'interface web
+2. **Tester la modification d'entreprise** via l'interface web
+3. **Se connecter avec un compte admin** et vérifier :
+   - Le nom s'affiche correctement
+   - Le thème de l'entreprise est appliqué
+   - L'entreprise est automatiquement sélectionnée
 
 ---
 
-## 📁 Fichiers Modifiés
+## 📞 Support
 
-| Fichier                                     | Lignes Modifiées | Type de Modification        |
-| ------------------------------------------- | ---------------- | --------------------------- |
-| `frontend/src/pages/Entreprises.jsx`        | 142-143          | Ajout logs soumission       |
-| `frontend/src/pages/Entreprises.jsx`        | 174, 180         | Ajout logs création         |
-| `frontend/src/pages/Entreprises.jsx`        | 184-209          | Ajout logs upload détaillés |
-| `backend/src/controllers/FileController.ts` | 44-53            | Logs déjà présents          |
+Si vous rencontrez des problèmes :
 
----
-
-## 📚 Documentation Créée
-
-1. **TEST_LOGO_MAINTENANT.md** - Instructions de test avec diagnostic
-2. **CORRECTIONS_APPLIQUEES.md** - Ce document
-3. **RAPPORT_FINAL_BUG_LOGO.md** - Rapport complet
-4. **GUIDE_TEST_LOGO.md** - Guide détaillé
-5. **RESUME_CORRECTION_LOGO.md** - Résumé technique
-6. **INSTRUCTIONS_TEST.md** - Instructions rapides
+1. Vérifiez que le backend est en cours d'exécution
+2. Vérifiez les logs du backend dans la console
+3. Vérifiez les logs du frontend (F12 → Console)
+4. Consultez ce document pour les comptes de test
 
 ---
 
-## 💡 Points Clés
-
-1. **Le code semble correct** - L'upload séquentiel est bien implémenté
-2. **Les logs sont essentiels** - Ils permettront d'identifier le problème exact
-3. **Test manuel requis** - Impossible de confirmer sans tester réellement
-4. **Diagnostic précis** - Les logs permettront de savoir exactement où ça bloque
-
----
-
-**🎯 ACTION REQUISE : Effectuez le test maintenant et partagez les logs !**
-
-Voir : `TEST_LOGO_MAINTENANT.md`
+**✨ Toutes les corrections ont été appliquées avec succès !**

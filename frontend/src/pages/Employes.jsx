@@ -159,11 +159,12 @@ const Employes = () => {
         return;
       }
 
-      // Nettoyer les données avant l'envoi - convertir les chaînes vides en null
+      // Nettoyer les données avant l'envoi
+      // Les champs obligatoires (nom, prenom, email) ne doivent jamais être null
       const dataToSend = {
-        nom: formData.nom?.trim() || null,
-        prenom: formData.prenom?.trim() || null,
-        email: formData.email?.trim() || null,
+        nom: formData.nom?.trim(),
+        prenom: formData.prenom?.trim(),
+        email: formData.email?.trim(),
         poste: formData.poste?.trim() || null,
         salaire: formData.salaire ? Number(formData.salaire) : null,
         typeContrat: formData.typeContrat?.trim() || null,

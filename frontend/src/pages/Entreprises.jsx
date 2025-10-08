@@ -33,6 +33,16 @@ const entrepriseFormSchema = z.object({
     .string()
     .max(20, "Le numéro ne peut pas dépasser 20 caractères")
     .optional(),
+  adminNom: z
+    .string()
+    .min(1, "Le nom de l'admin est requis")
+    .max(50, "Le nom ne peut pas dépasser 50 caractères")
+    .optional(),
+  adminEmail: z.string().email("Email invalide").optional(),
+  adminMotDePasse: z
+    .string()
+    .min(6, "Le mot de passe doit contenir au moins 6 caractères")
+    .optional(),
 });
 
 const Entreprises = () => {
@@ -59,6 +69,9 @@ const Entreprises = () => {
     devise: "XOF",
     typePeriode: "MENSUELLE",
     numeroServiceClient: "",
+    adminNom: "",
+    adminEmail: "",
+    adminMotDePasse: "",
   });
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -151,6 +164,35 @@ const Entreprises = () => {
       // Validation avec Zod (on ne valide pas le fichier logo)
       const validationData = { ...formData };
       delete validationData.logo;
+
+      // Vérifier si des champs admin sont remplis
+      const hasAdminFields =
+        validationData.adminNom ||
+        validationData.adminEmail ||
+        validationData.adminMotDePasse;
+
+      if (hasAdminFields) {
+        // Si au moins un champ admin est rempli, tous sont requis
+        if (
+          !validationData.adminNom ||
+          !validationData.adminEmail ||
+          !validationData.adminMotDePasse
+        ) {
+          setFormErrors({
+            adminNom: !validationData.adminNom
+              ? "Requis si vous créez un admin"
+              : "",
+            adminEmail: !validationData.adminEmail
+              ? "Requis si vous créez un admin"
+              : "",
+            adminMotDePasse: !validationData.adminMotDePasse
+              ? "Requis si vous créez un admin"
+              : "",
+          });
+          return;
+        }
+      }
+
       entrepriseFormSchema.parse(validationData);
 
       const submitData = new FormData();
@@ -160,9 +202,26 @@ const Entreprises = () => {
         } else if (
           key !== "logo" &&
           formData[key] !== null &&
-          formData[key] !== ""
+          formData[key] !== "" &&
+          formData[key] !== undefined
         ) {
-          submitData.append(key, formData[key]);
+          // Ne pas envoyer les champs admin si tous ne sont pas remplis
+          if (
+            key === "adminNom" ||
+            key === "adminEmail" ||
+            key === "adminMotDePasse"
+          ) {
+            if (
+              hasAdminFields &&
+              formData.adminNom &&
+              formData.adminEmail &&
+              formData.adminMotDePasse
+            ) {
+              submitData.append(key, formData[key]);
+            }
+          } else {
+            submitData.append(key, formData[key]);
+          }
         }
       });
 
@@ -242,6 +301,9 @@ const Entreprises = () => {
         devise: "XOF",
         typePeriode: "MENSUELLE",
         numeroServiceClient: "",
+        adminNom: "",
+        adminEmail: "",
+        adminMotDePasse: "",
       });
       setCurrentPage(1);
       await fetchEntreprises();
@@ -253,7 +315,27 @@ const Entreprises = () => {
         });
         setFormErrors(fieldErrors);
       } else {
-        console.error(err);
+        console.error("❌ [ERROR] Erreur lors de la soumission:", err);
+        console.error("❌ [ERROR] Response data:", err.response?.data);
+        console.error("❌ [ERROR] Response status:", err.response?.status);
+
+        // Afficher l'erreur à l'utilisateur
+        if (err.response?.data?.errors) {
+          const backendErrors = {};
+          err.response.data.errors.forEach((error) => {
+            if (error.path) {
+              backendErrors[error.path[0]] = error.message;
+            } else {
+              console.error("Backend error:", error.message);
+              alert("Erreur: " + error.message);
+            }
+          });
+          if (Object.keys(backendErrors).length > 0) {
+            setFormErrors(backendErrors);
+          }
+        } else if (err.response?.data?.error) {
+          alert("Erreur: " + err.response.data.error);
+        }
       }
     }
   };
@@ -279,6 +361,9 @@ const Entreprises = () => {
       devise: "XOF",
       typePeriode: "MENSUELLE",
       numeroServiceClient: "",
+      adminNom: "",
+      adminEmail: "",
+      adminMotDePasse: "",
     });
   };
 
@@ -646,6 +731,103 @@ const Entreprises = () => {
                       placeholder="Ex: 33-800-90-11"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg "
                     />
+                  </div>
+
+                  {/* Section Admin */}
+                  <div className="border-t pt-4 mt-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-4">
+                      Créer un administrateur pour cette entreprise
+                    </h3>
+                    <div className="space-y-4">
+                      <FormField
+                        label="Nom de l'administrateur"
+                        name="adminNom"
+                        type="text"
+                        value={formData.adminNom}
+                        onChange={handleFormChange}
+                        onBlur={() => {
+                          if (
+                            formData.adminNom &&
+                            formData.adminNom.length < 1
+                          ) {
+                            setFormErrors((prev) => ({
+                              ...prev,
+                              adminNom: "Le nom de l'admin est requis",
+                            }));
+                          } else if (
+                            formData.adminNom &&
+                            formData.adminNom.length > 50
+                          ) {
+                            setFormErrors((prev) => ({
+                              ...prev,
+                              adminNom:
+                                "Le nom ne peut pas dépasser 50 caractères",
+                            }));
+                          } else {
+                            setFormErrors((prev) => ({
+                              ...prev,
+                              adminNom: "",
+                            }));
+                          }
+                        }}
+                        error={formErrors.adminNom}
+                        placeholder="Ex: Aly Coach"
+                      />
+
+                      <FormField
+                        label="Email de l'administrateur"
+                        name="adminEmail"
+                        type="email"
+                        value={formData.adminEmail}
+                        onChange={handleFormChange}
+                        onBlur={() => {
+                          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                          if (
+                            formData.adminEmail &&
+                            !emailRegex.test(formData.adminEmail)
+                          ) {
+                            setFormErrors((prev) => ({
+                              ...prev,
+                              adminEmail: "Email invalide",
+                            }));
+                          } else {
+                            setFormErrors((prev) => ({
+                              ...prev,
+                              adminEmail: "",
+                            }));
+                          }
+                        }}
+                        error={formErrors.adminEmail}
+                        placeholder="admin@entreprise.com"
+                      />
+
+                      <FormField
+                        label="Mot de passe de l'administrateur"
+                        name="adminMotDePasse"
+                        type="password"
+                        value={formData.adminMotDePasse}
+                        onChange={handleFormChange}
+                        onBlur={() => {
+                          if (
+                            formData.adminMotDePasse &&
+                            formData.adminMotDePasse.length < 6
+                          ) {
+                            setFormErrors((prev) => ({
+                              ...prev,
+                              adminMotDePasse:
+                                "Le mot de passe doit contenir au moins 6 caractères",
+                            }));
+                          } else {
+                            setFormErrors((prev) => ({
+                              ...prev,
+                              adminMotDePasse: "",
+                            }));
+                          }
+                        }}
+                        error={formErrors.adminMotDePasse}
+                        placeholder="Mot de passe sécurisé"
+                      />
+                    </div>
                   </div>
                 </div>
 
