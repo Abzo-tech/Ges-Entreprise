@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../components/ThemeProvider";
+import { useNotification } from "../context/NotificationContext";
 import api from "../services/api";
 import Pagination from "../components/Pagination";
 import QRCodeDisplay from "../components/QRCodeDisplay";
+import ConfirmDialog from "../components/ConfirmDialog";
 import {
   PlusIcon,
   PencilIcon,
@@ -16,6 +18,7 @@ import {
 const Employes = () => {
   const { theme } = useTheme();
   const { user, selectedEntreprise } = useAuth();
+  const { addNotification } = useNotification();
   const [employes, setEmployes] = useState([]);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState("");
@@ -35,6 +38,7 @@ const Employes = () => {
   const [formErrors, setFormErrors] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const [formData, setFormData] = useState({
+    matricule: "",
     nom: "",
     prenom: "",
     email: "",
@@ -44,6 +48,13 @@ const Employes = () => {
     adresse: "",
     telephone: "",
     actif: true,
+  });
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmConfig, setConfirmConfig] = useState({
+    title: "",
+    message: "",
+    onConfirm: null,
+    type: "warning",
   });
   const itemsPerPage = 10;
 
@@ -87,6 +98,16 @@ const Employes = () => {
     setCurrentPage(1);
   };
 
+  const handleConfirm = (title, message, action, type = "warning") => {
+    setConfirmConfig({
+      title,
+      message,
+      onConfirm: action,
+      type,
+    });
+    setShowConfirm(true);
+  };
+
   const handleFilterChange = (e) => {
     setFilters({
       ...filters,
@@ -126,29 +147,57 @@ const Employes = () => {
 
     try {
       setError("");
-      const dataToSend = { ...formData };
 
-      // Déterminer l'entrepriseId appropriée
-      if (selectedEntreprise) {
-        // Si une entreprise est sélectionnée (mode entreprise), utiliser celle-ci
-        dataToSend.entrepriseId = selectedEntreprise;
-      } else if (
-        user?.role !== "SUPER_ADMIN" &&
-        user?.entreprises?.length > 0
-      ) {
-        // Pour les admins normaux, utiliser leur première entreprise assignée
-        dataToSend.entrepriseId = user.entreprises[0];
+      // Vérifier que l'entrepriseId est disponible
+      let entrepriseId = selectedEntreprise;
+      if (!entrepriseId && user?.entreprises?.length > 0) {
+        entrepriseId = user.entreprises[0];
+      }
+
+      if (!entrepriseId) {
+        setError("Veuillez sélectionner une entreprise");
+        return;
+      }
+
+      // Nettoyer les données avant l'envoi - convertir les chaînes vides en null
+      const dataToSend = {
+        nom: formData.nom?.trim() || null,
+        prenom: formData.prenom?.trim() || null,
+        email: formData.email?.trim() || null,
+        poste: formData.poste?.trim() || null,
+        salaire: formData.salaire ? Number(formData.salaire) : null,
+        typeContrat: formData.typeContrat?.trim() || null,
+        adresse: formData.adresse?.trim() || null,
+        telephone: formData.telephone?.trim() || null,
+        actif: formData.actif,
+        entrepriseId: Number(entrepriseId),
+      };
+
+      // N'envoyer le matricule que s'il est fourni (pour permettre la génération automatique)
+      if (formData.matricule?.trim()) {
+        dataToSend.matricule = formData.matricule.trim();
       }
 
       if (editingEmploye) {
         await api.put(`/employes/${editingEmploye.id}`, dataToSend);
         setSuccess("Employé modifié avec succès");
+        addNotification({
+          type: "success",
+          title: "Employé modifié",
+          message: `${formData.prenom} ${formData.nom} a été modifié avec succès.`,
+        });
       } else {
         await api.post("/employes", dataToSend);
         setSuccess("Employé ajouté avec succès");
+        addNotification({
+          type: "success",
+          title: "Employé créé",
+          message: `${formData.prenom} ${formData.nom} a été ajouté avec succès.`,
+        });
       }
       setShowModal(false);
       setFormData({
+        matricule: "",
         nom: "",
         prenom: "",
         email: "",
@@ -164,8 +213,17 @@ const Employes = () => {
       setCurrentPage(1);
       fetchEmployes();
     } catch (err) {
-      setError("Erreur lors de la sauvegarde");
-      console.error(err);
+      const errorMsg =
+        err.response?.data?.errors?.[0]?.message ||
+        err.response?.data?.error ||
+        "Erreur lors de la sauvegarde";
+      setError(errorMsg);
+      addNotification({
+        type: "error",
+        title: "Erreur",
+        message: errorMsg,
+      });
+      console.error("Erreur complète:", err.response?.data || err);
     }
   };
 
@@ -173,6 +231,7 @@ const Employes = () => {
     setShowModal(true);
     setEditingEmploye(null);
     setFormData({
+      matricule: "",
       nom: "",
       prenom: "",
       email: "",
@@ -189,6 +248,7 @@ const Employes = () => {
   const handleEditEmploye = (employe) => {
     setEditingEmploye(employe);
     setFormData({
+      matricule: employe.matricule || "",
       nom: employe.nom || "",
       prenom: employe.prenom || "",
       email: employe.email || "",
@@ -203,33 +263,75 @@ const Employes = () => {
   };
 
   const handleDeleteEmploye = async (id) => {
-    if (!window.confirm("Êtes-vous sûr de vouloir supprimer cet employé ?"))
-      return;
-    try {
-      await api.delete(`/employes/${id}`);
-      setSuccess("Employé supprimé avec succès");
-      fetchEmployes();
-    } catch (err) {
-      if (err.response?.status === 400) {
-        setError(
-          "Impossible de supprimer cet employé car il a des données associées (bulletins, paiements)"
-        );
-      } else {
-        setError("Erreur lors de la suppression");
-      }
-      console.error(err);
-    }
+    const employe = employes.find((e) => e.id === id);
+    handleConfirm(
+      "Supprimer l'employé",
+      `Êtes-vous sûr de vouloir supprimer ${employe?.prenom} ${employe?.nom} ?`,
+      async () => {
+        try {
+          await api.delete(`/employes/${id}`);
+          setSuccess("Employé supprimé avec succès");
+          addNotification({
+            type: "success",
+            title: "Employé supprimé",
+            message: `${employe?.prenom} ${employe?.nom} a été supprimé avec succès.`,
+          });
+          fetchEmployes();
+        } catch (err) {
+          if (err.response?.status === 400) {
+            const errorMsg =
+              "Impossible de supprimer cet employé car il a des données associées (bulletins, paiements)";
+            setError(errorMsg);
+            addNotification({
+              type: "error",
+              title: "Suppression impossible",
+              message: errorMsg,
+            });
+          } else {
+            setError("Erreur lors de la suppression");
+            addNotification({
+              type: "error",
+              title: "Erreur",
+              message: "Erreur lors de la suppression de l'employé.",
+            });
+          }
+          console.error(err);
+        }
+      },
+      "danger"
+    );
   };
 
   const handleToggleActif = async (id, actif) => {
-    try {
-      await api.patch(`/employes/${id}/actif`);
-      setSuccess(`Employé ${actif ? "désactivé" : "activé"} avec succès`);
-      fetchEmployes();
-    } catch (err) {
-      setError("Erreur lors du changement de statut");
-      console.error(err);
-    }
+    const employe = employes.find((e) => e.id === id);
+    handleConfirm(
+      "Changement de statut",
+      `Êtes-vous sûr de vouloir ${actif ? "désactiver" : "activer"} ${
+        employe?.prenom
+      } ${employe?.nom} ?`,
+      async () => {
+        try {
+          await api.patch(`/employes/${id}/actif`);
+          setSuccess(`Employé ${actif ? "désactivé" : "activé"} avec succès`);
+          addNotification({
+            type: "success",
+            title: "Statut modifié",
+            message: `${employe?.prenom} ${employe?.nom} a été ${
+              actif ? "désactivé" : "activé"
+            } avec succès.`,
+          });
+          fetchEmployes();
+        } catch (err) {
+          setError("Erreur lors du changement de statut");
+          addNotification({
+            type: "error",
+            title: "Erreur",
+            message: "Erreur lors du changement de statut de l'employé.",
+          });
+          console.error(err);
+        }
+      }
+    );
   };
 
   const handleShowQR = (employe) => {
@@ -393,6 +495,11 @@ const Employes = () => {
                           <div className="text-sm text-neutral-500">
                             {employe.email}
                           </div>
+                          {employe.matricule && (
+                            <div className="text-xs text-neutral-400 mt-0.5">
+                              Matricule: {employe.matricule}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -490,11 +597,11 @@ const Employes = () => {
       {/* Modal for Add/Edit */}
       {showModal && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={() => setShowModal(false)}
         >
           <div
-            className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6">
@@ -502,140 +609,178 @@ const Employes = () => {
                 {editingEmploye ? "Modifier l'employé" : "Ajouter un employé"}
               </h2>
               <form onSubmit={handleSubmitForm} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Nom *
-                  </label>
-                  <input
-                    type="text"
-                    name="nom"
-                    value={formData.nom}
-                    onChange={handleFormChange}
-                    className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-neutral-400 focus:border-neutral-400 ${
-                      formErrors.nom ? "border-error-300" : "border-neutral-300"
-                    }`}
-                  />
-                  {formErrors.nom && (
-                    <p className="mt-1 text-sm text-error-600">
-                      {formErrors.nom}
+                {/* Grille 2 colonnes pour les champs */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      Matricule
+                    </label>
+                    <input
+                      type="text"
+                      name="matricule"
+                      value={formData.matricule}
+                      onChange={handleFormChange}
+                      placeholder="Généré automatiquement si vide"
+                      className="w-full px-3 py-1.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-400 focus:border-neutral-400"
+                      disabled={editingEmploye ? true : false}
+                    />
+                    <p className="mt-1 text-xs text-neutral-500">
+                      {editingEmploye
+                        ? "Le matricule ne peut pas être modifié"
+                        : "Laissez vide pour générer automatiquement"}
                     </p>
-                  )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      Nom *
+                    </label>
+                    <input
+                      type="text"
+                      name="nom"
+                      value={formData.nom}
+                      onChange={handleFormChange}
+                      className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-neutral-400 focus:border-neutral-400 ${
+                        formErrors.nom
+                          ? "border-error-300"
+                          : "border-neutral-300"
+                      }`}
+                    />
+                    {formErrors.nom && (
+                      <p className="mt-1 text-sm text-error-600">
+                        {formErrors.nom}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      Prénom *
+                    </label>
+                    <input
+                      type="text"
+                      name="prenom"
+                      value={formData.prenom}
+                      onChange={handleFormChange}
+                      className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-neutral-400 focus:border-neutral-400 ${
+                        formErrors.prenom
+                          ? "border-error-300"
+                          : "border-neutral-300"
+                      }`}
+                    />
+                    {formErrors.prenom && (
+                      <p className="mt-1 text-sm text-error-600">
+                        {formErrors.prenom}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      Email *
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleFormChange}
+                      className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-neutral-400 focus:border-neutral-400 ${
+                        formErrors.email
+                          ? "border-error-300"
+                          : "border-neutral-300"
+                      }`}
+                    />
+                    {formErrors.email && (
+                      <p className="mt-1 text-sm text-error-600">
+                        {formErrors.email}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      Téléphone
+                    </label>
+                    <input
+                      type="tel"
+                      name="telephone"
+                      value={formData.telephone}
+                      onChange={handleFormChange}
+                      placeholder="77-123-45-67"
+                      className="w-full px-3 py-1.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-400 focus:border-neutral-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      Poste *
+                    </label>
+                    <input
+                      type="text"
+                      name="poste"
+                      value={formData.poste}
+                      onChange={handleFormChange}
+                      className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-neutral-400 focus:border-neutral-400 ${
+                        formErrors.poste
+                          ? "border-error-300"
+                          : "border-neutral-300"
+                      }`}
+                    />
+                    {formErrors.poste && (
+                      <p className="mt-1 text-sm text-error-600">
+                        {formErrors.poste}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      Salaire *
+                    </label>
+                    <input
+                      type="number"
+                      name="salaire"
+                      value={formData.salaire}
+                      onChange={handleFormChange}
+                      step="0.01"
+                      min="0"
+                      className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-neutral-400 focus:border-neutral-400 ${
+                        formErrors.salaire
+                          ? "border-error-300"
+                          : "border-neutral-300"
+                      }`}
+                    />
+                    {formErrors.salaire && (
+                      <p className="mt-1 text-sm text-error-600">
+                        {formErrors.salaire}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-1">
+                      Type de contrat
+                    </label>
+                    <select
+                      name="typeContrat"
+                      value={formData.typeContrat}
+                      onChange={handleFormChange}
+                      className="w-full px-3 py-1.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-400 focus:border-neutral-400"
+                    >
+                      <option value="">Sélectionner</option>
+                      <option value="HONORAIRE">Honoraires</option>
+                      <option value="MENSUEL">Mensuel</option>
+                      <option value="JOURNALIERE">Journalière</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center pt-6">
+                    <input
+                      type="checkbox"
+                      name="actif"
+                      checked={formData.actif}
+                      onChange={handleFormChange}
+                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-neutral-300 rounded"
+                    />
+                    <label className="ml-2 block text-sm font-medium text-neutral-700">
+                      Actif
+                    </label>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Prénom *
-                  </label>
-                  <input
-                    type="text"
-                    name="prenom"
-                    value={formData.prenom}
-                    onChange={handleFormChange}
-                    className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-neutral-400 focus:border-neutral-400 ${
-                      formErrors.prenom
-                        ? "border-error-300"
-                        : "border-neutral-300"
-                    }`}
-                  />
-                  {formErrors.prenom && (
-                    <p className="mt-1 text-sm text-error-600">
-                      {formErrors.prenom}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Email *
-                  </label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleFormChange}
-                    className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-neutral-400 focus:border-neutral-400 ${
-                      formErrors.email
-                        ? "border-error-300"
-                        : "border-neutral-300"
-                    }`}
-                  />
-                  {formErrors.email && (
-                    <p className="mt-1 text-sm text-error-600">
-                      {formErrors.email}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Téléphone
-                  </label>
-                  <input
-                    type="tel"
-                    name="telephone"
-                    value={formData.telephone}
-                    onChange={handleFormChange}
-                    placeholder="77-123-45-67"
-                    className="w-full px-3 py-1.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-400 focus:border-neutral-400"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Poste *
-                  </label>
-                  <input
-                    type="text"
-                    name="poste"
-                    value={formData.poste}
-                    onChange={handleFormChange}
-                    className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-neutral-400 focus:border-neutral-400 ${
-                      formErrors.poste
-                        ? "border-error-300"
-                        : "border-neutral-300"
-                    }`}
-                  />
-                  {formErrors.poste && (
-                    <p className="mt-1 text-sm text-error-600">
-                      {formErrors.poste}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Salaire *
-                  </label>
-                  <input
-                    type="number"
-                    name="salaire"
-                    value={formData.salaire}
-                    onChange={handleFormChange}
-                    step="0.01"
-                    min="0"
-                    className={`w-full px-3 py-1.5 border rounded-lg focus:ring-2 focus:ring-neutral-400 focus:border-neutral-400 ${
-                      formErrors.salaire
-                        ? "border-error-300"
-                        : "border-neutral-300"
-                    }`}
-                  />
-                  {formErrors.salaire && (
-                    <p className="mt-1 text-sm text-error-600">
-                      {formErrors.salaire}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Type de contrat
-                  </label>
-                  <select
-                    name="typeContrat"
-                    value={formData.typeContrat}
-                    onChange={handleFormChange}
-                    className="w-full px-3 py-1.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-400 focus:border-neutral-400"
-                  >
-                    <option value="">Sélectionner</option>
-                    <option value="HONORAIRE">Honoraires</option>
-                    <option value="MENSUEL">Mensuel</option>
-                    <option value="JOURNALIERE">Journalière</option>
-                  </select>
-                </div>
+
+                {/* Adresse en pleine largeur */}
                 <div>
                   <label className="block text-sm font-medium text-neutral-700 mb-1">
                     Adresse
@@ -644,22 +789,12 @@ const Employes = () => {
                     name="adresse"
                     value={formData.adresse}
                     onChange={handleFormChange}
-                    rows="3"
+                    rows="2"
                     className="w-full px-3 py-1.5 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-neutral-400 focus:border-neutral-400"
                   />
                 </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    name="actif"
-                    checked={formData.actif}
-                    onChange={handleFormChange}
-                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-neutral-300 rounded"
-                  />
-                  <label className="ml-2 block text-sm font-medium text-neutral-700">
-                    Actif
-                  </label>
-                </div>
+
+                {/* Boutons d'action */}
                 <div className="flex justify-end space-x-3 pt-4">
                   <button
                     type="button"
@@ -684,11 +819,11 @@ const Employes = () => {
       {/* QR Code Modal */}
       {showQRModal && selectedEmployeForQR && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={() => setShowQRModal(false)}
         >
           <div
-            className="bg-white rounded-xl shadow-xl max-w-md w-full"
+            className="bg-white rounded-xl shadow-2xl max-w-md w-full"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6">
@@ -711,6 +846,21 @@ const Employes = () => {
           </div>
         </div>
       )}
+
+      {/* Dialog de confirmation */}
+      <ConfirmDialog
+        isOpen={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={() => {
+          if (confirmConfig.onConfirm) {
+            confirmConfig.onConfirm();
+          }
+          setShowConfirm(false);
+        }}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        type={confirmConfig.type}
+      />
     </div>
   );
 };

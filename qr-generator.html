@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Générateur QR Code - Système de Pointage</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        color: white;
+        padding: 30px;
+        text-align: center;
+      }
+
+      .header h1 {
+        font-size: 28px;
+        margin-bottom: 10px;
+      }
+
+      .header p {
+        opacity: 0.9;
+        font-size: 14px;
+      }
+
+      .content {
+        padding: 30px;
+      }
+
+      .info-box {
+        background: #eef2ff;
+        border-left: 4px solid #4f46e5;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+      }
+
+      .info-box strong {
+        color: #4f46e5;
+        display: block;
+        margin-bottom: 10px;
+        font-size: 16px;
+      }
+
+      .info-box ol {
+        margin-left: 20px;
+        color: #4b5563;
+      }
+
+      .info-box li {
+        margin: 5px 0;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: block;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+
+      input,
+      select {
+        width: 100%;
+        padding: 12px 16px;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 16px;
+        transition: all 0.3s;
+      }
+
+      input:focus,
+      select:focus {
+        outline: none;
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+      }
+
+      .btn {
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+      }
+
+      .btn:active {
+        transform: translateY(0);
+      }
+
+      #qrcode {
+        text-align: center;
+        margin: 30px 0;
+        padding: 20px;
+        background: #f9fafb;
+        border-radius: 12px;
+      }
+
+      #qrcode canvas {
+        border: 4px solid white;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      #qrData {
+        background: #f3f4f6;
+        padding: 20px;
+        border-radius: 8px;
+        margin-top: 20px;
+      }
+
+      #qrData code {
+        background: white;
+        padding: 12px;
+        display: block;
+        margin: 10px 0;
+        border-radius: 6px;
+        font-family: "Courier New", monospace;
+        font-size: 13px;
+        word-wrap: break-word;
+        border: 1px solid #e5e7eb;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin-top: 20px;
+      }
+
+      .stat-card {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+      }
+
+      .stat-label {
+        font-size: 12px;
+        color: #6b7280;
+        margin-bottom: 5px;
+      }
+
+      .stat-value {
+        font-size: 18px;
+        font-weight: 700;
+        color: #4f46e5;
+      }
+
+      .download-btn {
+        display: inline-block;
+        margin-top: 15px;
+        padding: 10px 20px;
+        background: #10b981;
+        color: white;
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: 600;
+        transition: all 0.2s;
+      }
+
+      .download-btn:hover {
+        background: #059669;
+        transform: translateY(-2px);
+      }
+
+      .format-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        background: #4f46e5;
+        color: white;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-left: 10px;
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          border-radius: 0;
+        }
+
+        .content {
+          padding: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🔲 Générateur de QR Code</h1>
+        <p>Système de Pointage - Gestion des Entreprises</p>
+      </div>
+
+      <div class="content">
+        <div class="info-box">
+          <strong>📋 Instructions d'utilisation</strong>
+          <ol>
+            <li>
+              Entrez l'ID de l'employé (doit exister dans la base de données)
+            </li>
+            <li>Choisissez le format du QR code (JSON recommandé)</li>
+            <li>Cliquez sur "Générer QR Code"</li>
+            <li>Scannez le QR code avec l'application de pointage</li>
+            <li>Téléchargez l'image pour l'imprimer ou la sauvegarder</li>
+          </ol>
+        </div>
+
+        <div class="form-group">
+          <label for="employeId">
+            ID de l'employé
+            <span style="color: #ef4444">*</span>
+          </label>
+          <input
+            type="number"
+            id="employeId"
+            placeholder="Ex: 1, 2, 3..."
+            value="1"
+            min="1"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="format"> Format du QR Code </label>
+          <select id="format">
+            <option value="json">
+              JSON Complet (Recommandé) - {"type":"pointage","employeId":X,...}
+            </option>
+            <option value="simple">ID Simple - Juste le numéro</option>
+          </select>
+        </div>
+
+        <button class="btn" onclick="generateQR()">🔲 Générer QR Code</button>
+
+        <div id="qrcode"></div>
+        <div id="qrData"></div>
+      </div>
+    </div>
+
+    <script>
+      let currentCanvas = null;
+
+      function generateQR() {
+        const employeId = document.getElementById("employeId").value;
+        const format = document.getElementById("format").value;
+
+        if (!employeId || employeId < 1) {
+          alert("⚠️ Veuillez entrer un ID d'employé valide (nombre positif)");
+          return;
+        }
+
+        let qrData;
+        let formatLabel;
+
+        if (format === "json") {
+          qrData = JSON.stringify({
+            type: "pointage",
+            employeId: parseInt(employeId),
+            timestamp: Date.now(),
+          });
+          formatLabel = "JSON Complet";
+        } else {
+          qrData = employeId;
+          formatLabel = "ID Simple";
+        }
+
+        // Effacer le QR code précédent
+        document.getElementById("qrcode").innerHTML =
+          '<p style="color: #6B7280; margin-bottom: 15px;">⏳ Génération en cours...</p>';
+
+        // Générer le nouveau QR code
+        QRCode.toCanvas(
+          qrData,
+          {
+            width: 300,
+            margin: 2,
+            color: {
+              dark: "#000000",
+              light: "#FFFFFF",
+            },
+            errorCorrectionLevel: "H",
+          },
+          function (error, canvas) {
+            if (error) {
+              console.error(error);
+              document.getElementById("qrcode").innerHTML =
+                '<p style="color: #EF4444;">❌ Erreur lors de la génération du QR code</p>';
+            } else {
+              currentCanvas = canvas;
+              document.getElementById("qrcode").innerHTML = "";
+              document.getElementById("qrcode").appendChild(canvas);
+
+              // Bouton de téléchargement
+              const downloadLink = document.createElement("a");
+              downloadLink.className = "download-btn";
+              downloadLink.innerHTML = "💾 Télécharger le QR Code";
+              downloadLink.onclick = downloadQR;
+              document.getElementById("qrcode").appendChild(downloadLink);
+
+              // Afficher les données du QR code
+              const dataLength = qrData.length;
+              const timestamp =
+                format === "json" ? new Date().toLocaleString("fr-FR") : "N/A";
+
+              document.getElementById("qrData").innerHTML = `
+                        <strong style="color: #374151; display: block; margin-bottom: 15px;">
+                            📱 Informations du QR Code
+                            <span class="format-badge">${formatLabel}</span>
+                        </strong>
+                        
+                        <div class="stats">
+                            <div class="stat-card">
+                                <div class="stat-label">Employé ID</div>
+                                <div class="stat-value">${employeId}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Format</div>
+                                <div class="stat-value">${formatLabel}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Taille</div>
+                                <div class="stat-value">${dataLength} car.</div>
+                            </div>
+                            ${
+                              format === "json"
+                                ? `
+                            <div class="stat-card">
+                                <div class="stat-label">Généré le</div>
+                                <div class="stat-value" style="font-size: 12px;">${timestamp}</div>
+                            </div>
+                            `
+                                : ""
+                            }
+                        </div>
+                        
+                        <div style="margin-top: 20px;">
+                            <strong style="color: #374151; display: block; margin-bottom: 10px;">
+                                📄 Contenu du QR Code :
+                            </strong>
+                            <code>${qrData}</code>
+                        </div>
+                        
+                        <div style="margin-top: 20px; padding: 15px; background: #FEF3C7; border-radius: 8px; border-left: 4px solid #F59E0B;">
+                            <strong style="color: #92400E; display: block; margin-bottom: 8px;">
+                                💡 Conseils d'utilisation
+                            </strong>
+                            <ul style="margin-left: 20px; color: #78350F; font-size: 14px;">
+                                <li>Imprimez le QR code en haute qualité (300 DPI minimum)</li>
+                                <li>Assurez-vous que l'employé ID ${employeId} existe dans la base de données</li>
+                                <li>Testez le QR code avant de l'imprimer en masse</li>
+                                <li>Conservez une copie numérique pour référence</li>
+                            </ul>
+                        </div>
+                    `;
+            }
+          }
+        );
+      }
+
+      function downloadQR() {
+        if (!currentCanvas) {
+          alert("⚠️ Aucun QR code à télécharger. Générez-en un d'abord.");
+          return;
+        }
+
+        const employeId = document.getElementById("employeId").value;
+        const format = document.getElementById("format").value;
+        const filename = `qr-pointage-employe-${employeId}-${format}-${Date.now()}.png`;
+
+        currentCanvas.toBlob(function (blob) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.download = filename;
+          link.href = url;
+          link.click();
+          URL.revokeObjectURL(url);
+        });
+      }
+
+      // Générer un QR code par défaut au chargement
+      window.onload = function () {
+        generateQR();
+      };
+
+      // Permettre la génération avec la touche Entrée
+      document
+        .getElementById("employeId")
+        .addEventListener("keypress", function (e) {
+          if (e.key === "Enter") {
+            generateQR();
+          }
+        });
+    </script>
+  </body>
+</html>

@@ -1,71 +1,153 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import React, { useState, useEffect, useRef } from "react";
+import { Html5QrcodeScanner } from "html5-qrcode";
 
 const QRScanner = ({ onScanSuccess, onScanError, onClose }) => {
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [scanning, setScanning] = useState(true);
-  const scannerRef = useRef(null);
   const scannerInstanceRef = useRef(null);
-
-  useEffect(() => {
-    if (scanning && !scannerInstanceRef.current) {
-      scannerInstanceRef.current = new Html5QrcodeScanner(
-        'qr-reader',
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
-          showTorchButtonIfSupported: true,
-          showZoomSliderIfSupported: true,
-        },
-        false
-      );
-
-      scannerInstanceRef.current.render(onScanSuccessWrapper, onScanErrorWrapper);
-    }
-
-    return () => {
-      if (scannerInstanceRef.current) {
-        scannerInstanceRef.current.clear().catch(console.error);
-        scannerInstanceRef.current = null;
-      }
-    };
-  }, [scanning]);
+  const hasInitialized = useRef(false);
 
   const onScanSuccessWrapper = (decodedText, decodedResult) => {
-    if (scanning) {
-      setScanning(false);
+    if (!scanning) return;
+
+    console.log("📷 [QR SCANNER] QR code détecté:", decodedText);
+    setScanning(false);
+
+    try {
+      // Le QR code peut être soit un JSON, soit juste un ID
+      let qrData;
+
       try {
-        // For our QR codes, the data should be the employee ID as string
+        // Essayer de parser comme JSON
+        qrData = JSON.parse(decodedText);
+        console.log("✅ [QR SCANNER] QR parsé comme JSON:", qrData);
+      } catch {
+        // Si ce n'est pas du JSON, c'est probablement juste un ID
+        console.log(
+          "⚠️ [QR SCANNER] Pas du JSON, tentative de parsing comme ID"
+        );
         const employeId = parseInt(decodedText);
+
         if (employeId && !isNaN(employeId)) {
-          onScanSuccess({ employeId });
+          qrData = {
+            type: "pointage",
+            employeId: employeId,
+            timestamp: Date.now(),
+          };
+          console.log(
+            "✅ [QR SCANNER] QR converti en format standard:",
+            qrData
+          );
         } else {
-          setError('QR code invalide pour le pointage');
+          console.error(
+            "❌ [QR SCANNER] Impossible de parser comme ID:",
+            decodedText
+          );
+          setError("QR code invalide pour le pointage");
           setTimeout(() => setScanning(true), 2000);
+          return;
         }
-      } catch (err) {
-        setError('Format QR code invalide');
+      }
+
+      // Vérifier que le QR code est valide
+      if (
+        qrData &&
+        qrData.employeId &&
+        (qrData.type === "pointage" || !qrData.type)
+      ) {
+        const qrDataString = JSON.stringify(qrData);
+        console.log(
+          "🚀 [QR SCANNER] Envoi des données au parent:",
+          qrDataString
+        );
+
+        // Envoyer le QR data au format JSON string
+        onScanSuccess(qrDataString);
+      } else {
+        console.error("❌ [QR SCANNER] QR code invalide:", qrData);
+        setError("QR code invalide pour le pointage");
         setTimeout(() => setScanning(true), 2000);
       }
+    } catch (err) {
+      console.error("❌ [QR SCANNER] Erreur lors du traitement:", err);
+      setError("Format QR code invalide");
+      setTimeout(() => setScanning(true), 2000);
     }
   };
 
   const onScanErrorWrapper = (errorMessage) => {
     // Ignore NotFoundException as it's expected when no QR code is present
-    if (errorMessage.includes('NotFoundException')) {
+    if (errorMessage.includes("NotFoundException")) {
       return;
     }
 
-    console.error('QR Scanner error:', errorMessage);
-    setError('Erreur du scanner QR');
+    console.error("QR Scanner error:", errorMessage);
+    setError("Erreur du scanner QR");
     if (onScanError) {
       onScanError(new Error(errorMessage));
     }
   };
 
+  useEffect(() => {
+    console.log(
+      "📷 [QR SCANNER] useEffect appelé, hasInitialized:",
+      hasInitialized.current
+    );
+
+    // Empêcher la double initialisation
+    if (hasInitialized.current) {
+      console.log("⚠️ [QR SCANNER] Scanner déjà initialisé, skip");
+      return;
+    }
+
+    hasInitialized.current = true;
+    console.log("🔵 [QR SCANNER] Initialisation du scanner...");
+
+    const initScanner = async () => {
+      try {
+        // Nettoyer tout scanner existant
+        const existingElement = document.getElementById("qr-reader");
+        if (existingElement) {
+          existingElement.innerHTML = "";
+        }
+
+        scannerInstanceRef.current = new Html5QrcodeScanner(
+          "qr-reader",
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0,
+            showTorchButtonIfSupported: true,
+            showZoomSliderIfSupported: true,
+          },
+          false
+        );
+
+        console.log("✅ [QR SCANNER] Scanner créé, lancement du render...");
+        scannerInstanceRef.current.render(
+          onScanSuccessWrapper,
+          onScanErrorWrapper
+        );
+        console.log("✅ [QR SCANNER] Scanner rendu avec succès");
+      } catch (error) {
+        console.error("❌ [QR SCANNER] Erreur initialisation:", error);
+      }
+    };
+
+    initScanner();
+
+    return () => {
+      console.log("🧹 [QR SCANNER] Cleanup du scanner...");
+      if (scannerInstanceRef.current) {
+        scannerInstanceRef.current.clear().catch(console.error);
+        scannerInstanceRef.current = null;
+      }
+      hasInitialized.current = false;
+    };
+  }, []);
+
   const resetScanner = () => {
-    setError('');
+    setError("");
     setScanning(true);
   };
 
@@ -96,7 +178,9 @@ const QRScanner = ({ onScanSuccess, onScanError, onClose }) => {
           ) : (
             <div className="text-center py-8">
               <div className="text-green-600 text-4xl mb-2">✓</div>
-              <p className="text-green-600 font-medium">QR Code scanné avec succès!</p>
+              <p className="text-green-600 font-medium">
+                QR Code scanné avec succès!
+              </p>
             </div>
           )}
         </div>
