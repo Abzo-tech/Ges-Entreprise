@@ -6,6 +6,7 @@ const QRScanner = ({ onScanSuccess, onScanError, onClose }) => {
   const [scanning, setScanning] = useState(true);
   const scannerInstanceRef = useRef(null);
   const hasInitialized = useRef(false);
+  const isCleaningUp = useRef(false);
 
   const onScanSuccessWrapper = (decodedText, decodedResult) => {
     if (!scanning) return;
@@ -105,10 +106,13 @@ const QRScanner = ({ onScanSuccess, onScanError, onClose }) => {
 
     const initScanner = async () => {
       try {
-        // Nettoyer tout scanner existant
+        // Nettoyer tout scanner existant de manière sécurisée
         const existingElement = document.getElementById("qr-reader");
         if (existingElement) {
-          existingElement.innerHTML = "";
+          // Vider complètement le contenu sans toucher aux enfants
+          while (existingElement.firstChild) {
+            existingElement.removeChild(existingElement.firstChild);
+          }
         }
 
         scannerInstanceRef.current = new Html5QrcodeScanner(
@@ -138,11 +142,48 @@ const QRScanner = ({ onScanSuccess, onScanError, onClose }) => {
 
     return () => {
       console.log("🧹 [QR SCANNER] Cleanup du scanner...");
+
+      // Empêcher les cleanups multiples
+      if (isCleaningUp.current) {
+        console.log("⚠️ [QR SCANNER] Cleanup déjà en cours, skip");
+        return;
+      }
+
+      isCleaningUp.current = true;
+
       if (scannerInstanceRef.current) {
-        scannerInstanceRef.current.clear().catch(console.error);
+        try {
+          // Arrêter le scanner de manière sécurisée
+          scannerInstanceRef.current.clear().catch((err) => {
+            // Ignorer les erreurs de cleanup DOM
+            if (!err.message?.includes("removeChild")) {
+              console.error("❌ [QR SCANNER] Erreur cleanup:", err);
+            }
+          });
+        } catch (err) {
+          // Ignorer les erreurs de cleanup
+          console.log("⚠️ [QR SCANNER] Erreur ignorée lors du cleanup");
+        }
         scannerInstanceRef.current = null;
       }
-      hasInitialized.current = false;
+
+      // Nettoyer manuellement le DOM de manière sécurisée
+      const readerElement = document.getElementById("qr-reader");
+      if (readerElement) {
+        try {
+          while (readerElement.firstChild) {
+            readerElement.removeChild(readerElement.firstChild);
+          }
+        } catch (err) {
+          // Ignorer les erreurs de nettoyage DOM
+          console.log("⚠️ [QR SCANNER] Erreur nettoyage DOM ignorée");
+        }
+      }
+
+      // NE PAS réinitialiser hasInitialized pour éviter la double initialisation en StrictMode
+      // hasInitialized.current reste à true pour toute la durée de vie du composant
+      isCleaningUp.current = false;
+      console.log("✅ [QR SCANNER] Cleanup terminé");
     };
   }, []);
 
@@ -152,8 +193,18 @@ const QRScanner = ({ onScanSuccess, onScanError, onClose }) => {
   };
 
   const handleClose = () => {
-    if (scannerInstanceRef.current) {
-      scannerInstanceRef.current.clear().catch(console.error);
+    if (scannerInstanceRef.current && !isCleaningUp.current) {
+      isCleaningUp.current = true;
+      try {
+        scannerInstanceRef.current.clear().catch((err) => {
+          // Ignorer les erreurs de cleanup DOM
+          if (!err.message?.includes("removeChild")) {
+            console.error("❌ [QR SCANNER] Erreur cleanup:", err);
+          }
+        });
+      } catch (err) {
+        console.log("⚠️ [QR SCANNER] Erreur ignorée lors de la fermeture");
+      }
       scannerInstanceRef.current = null;
     }
     onClose();
